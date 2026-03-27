@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Activity, Download } from 'lucide-react'
 import { Button } from '../component/button'
 import { Badge } from '../component/badge'
+import { Tooltip, TooltipContent, TooltipTrigger } from '../component/tooltip'
 import { getJobResults } from '../lib/api'
 import { useTestContext } from '../context/TestContext'
 
@@ -73,14 +74,46 @@ export function Dashboard() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-10">
-          <Stat label="Duration" value={`${summary.duration_sec || 0}s`} />
-          <Stat label="Total Requests" value={summary.total_requests || 0} />
-          <Stat label="Overall RPS" value={formatNumber(summary.overall_rps)} />
-          <Stat label="Overall P95" value={`${formatNumber(summary.overall_p95_ms)} ms`} />
-          <Stat label="Error Rate" value={`${formatNumber(summary.error_rate_pct)}%`} />
-          <Stat label="Checks Pass" value={`${formatNumber(summary.checks_pass_pct)}%`} />
-          <Stat label="SLO Compliance" value={summary.slo_pass ? 'Pass' : 'Fail'} />
-          <Stat label="Total APIs" value={results.summary?.total_apis || results.apis.length} />
+          <Stat
+            label="Duration"
+            tooltip="Total test execution time, including ramp‑up and ramp‑down by metric iteration"
+            value={`${summary.duration_sec || 0}s`}
+          />
+          <Stat
+            label="Total Requests"
+            tooltip="Total number of requests sent across all APIs during the test by metric http_reqs"
+            value={summary.total_requests || 0}
+          />
+          <Stat
+            label="Overall RPS"
+            tooltip="Total requests per second across all APIs by metric http_reqs"
+            value={formatNumber(summary.overall_rps)}
+          />
+          <Stat
+            label="Overall P95"
+            tooltip="p95 response time across all APIs combined by metric http_req_duration"
+            value={`${formatNumber(summary.overall_p95_ms)} ms`}
+          />
+          <Stat
+            label="Error Rate"
+            tooltip="Percentage of failed requests across all APIs. Failed means non‑2xx or network error by metric http_req_failed"
+            value={`${formatNumber(summary.error_rate_pct)}%`}
+          />
+          <Stat
+            label="Checks Pass"
+            tooltip="Percentage of defined checks that passed status 200 by metric checks"
+            value={`${formatNumber(summary.checks_pass_pct)}%`}
+          />
+          <Stat
+            label="SLO Compliance"
+            tooltip="Pass/Fail based on SLO threshold (p95 < 500ms and error rate = 0%)."
+            value={summary.slo_pass ? 'Pass' : 'Fail'}
+          />
+          <Stat
+            label="Total APIs"
+            tooltip="Number of APIs included in this run."
+            value={results.summary?.total_apis || results.apis.length}
+          />
         </div>
 
         {results.summary?.notes && (
@@ -93,18 +126,43 @@ export function Dashboard() {
           <table className="min-w-[960px] w-full text-left text-sm">
             <thead className="bg-white/5 text-xs uppercase tracking-wider text-gray-400">
               <tr>
-                <th className="px-4 py-3">API</th>
-                <th className="px-4 py-3">Req Count</th>
-                <th className="px-4 py-3">RPS</th>
-                <th className="px-4 py-3">Average</th>
-                <th className="px-4 py-3">Median</th>
-                <th className="px-4 py-3">95% Line</th>
-                <th className="px-4 py-3">99% Line</th>
-                <th className="px-4 py-3">Min</th>
-                <th className="px-4 py-3">Max</th>
-                <th className="px-4 py-3">Error</th>
-                <th className="px-4 py-3">Throughput</th>
-                <th className="px-4 py-3">SLO</th>
+                <th className="px-4 py-3">
+                  <HeaderWithTooltip label="API" tooltip="The API endpoint tested for this row." />
+                </th>
+                <th className="px-4 py-3">
+                  <HeaderWithTooltip label="Req Count" tooltip="Total number of requests sent to this API." />
+                </th>
+                <th className="px-4 py-3">
+                  <HeaderWithTooltip label="RPS" tooltip="Requests per second for this API (system‑wide)." />
+                </th>
+                <th className="px-4 py-3">
+                  <HeaderWithTooltip label="Average" tooltip="Latency Average response time per request (ms)." />
+                </th>
+                <th className="px-4 py-3">
+                  <HeaderWithTooltip label="Median" tooltip="Latency Median (p50) response time per request (ms)." />
+                </th>
+                <th className="px-4 py-3">
+                  <HeaderWithTooltip label="95% Line" tooltip="Latency p95 response time. 95% of requests were faster than this." />
+                </th>
+                <th className="px-4 py-3">
+                  <HeaderWithTooltip label="99% Line" tooltip="Latency p99 response time. 99% of requests were faster than this." />
+                </th>
+                <th className="px-4 py-3">
+                  <HeaderWithTooltip label="Min" tooltip="Fastest Latency response time recorded (ms)." />
+                </th>
+                <th className="px-4 py-3">
+                  <HeaderWithTooltip label="Max" tooltip="Slowest Latency response time recorded (ms)." />
+                </th>
+                <th className="px-4 py-3">
+                  <HeaderWithTooltip label="Error" tooltip="Percentage of failed requests for this API." />
+                </th>
+                <th className="px-4 py-3">
+                  <HeaderWithTooltip label="Throughput" tooltip="Response data transferred per second (bytes/s)."
+                  />
+                </th>
+                <th className="px-4 py-3">
+                  <HeaderWithTooltip label="SLO" tooltip="Pass/Fail based on your SLO threshold for this API." />
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -146,12 +204,27 @@ export function Dashboard() {
   )
 }
 
-function Stat({ label, value }: { label: string; value: string | number }) {
+function Stat({ label, value, tooltip }: { label: string; value: string | number; tooltip?: string }) {
   return (
     <div className="p-4 rounded-xl bg-gradient-to-br from-gray-900 to-gray-800/50 border border-white/5">
-      <div className="text-xs text-gray-400 mb-1">{label}</div>
+      <div className="text-xs text-gray-400 mb-1">
+        {tooltip ? <HeaderWithTooltip label={label} tooltip={tooltip} /> : label}
+      </div>
       <div className="text-2xl font-bold text-white">{value}</div>
     </div>
+  )
+}
+
+function HeaderWithTooltip({ label, tooltip }: { label: string; tooltip: string }) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span className="cursor-help underline decoration-dotted decoration-white/40 underline-offset-4">
+          {label}
+        </span>
+      </TooltipTrigger>
+      <TooltipContent side="top">{tooltip}</TooltipContent>
+    </Tooltip>
   )
 }
 

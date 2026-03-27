@@ -59,6 +59,14 @@ export function Upload() {
     }
   }
 
+  const formatFileSize = (bytes: number) => {
+    if (!bytes || Number.isNaN(bytes)) return '0 B'
+    const kb = bytes / 1024
+    const mb = kb / 1024
+    if (mb >= 1) return `${mb.toFixed(2)} MB`
+    return `${kb.toFixed(1)} KB`
+  }
+
   return (
     <div className="min-h-screen">
       <nav className="border-b border-white/5 backdrop-blur-xl bg-black/20">
@@ -160,7 +168,7 @@ export function Upload() {
                       <p className="text-white font-medium">{pdfFile.name}</p>
                       <CheckCircle2 className="w-5 h-5 text-green-400" />
                     </div>
-                    <p className="text-sm text-gray-400">{(pdfFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                    <p className="text-sm text-gray-400">{formatFileSize(pdfFile.size)}</p>
                   </div>
                 </div>
                 <Button
@@ -230,7 +238,7 @@ export function Upload() {
                       <p className="text-white font-medium">{cssFile.name}</p>
                       <CheckCircle2 className="w-5 h-5 text-purple-400" />
                     </div>
-                    <p className="text-sm text-gray-400">{(cssFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                    <p className="text-sm text-gray-400">{formatFileSize(cssFile.size)}</p>
                   </div>
                 </div>
                 <Button

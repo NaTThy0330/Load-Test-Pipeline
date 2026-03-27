@@ -59,7 +59,6 @@ export function Loading() {
             <span className="text-sm font-semibold text-gray-400">
               {status === 'failed' ? 'Test failed' : 'Executing tests'}
             </span>
-            <span className="text-sm font-semibold text-blue-400">{progress}%</span>
           </div>
           <Progress value={progress} className="h-3" />
           <div className="flex items-center justify-between mt-2">
