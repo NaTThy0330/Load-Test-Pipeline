@@ -67,7 +67,7 @@ func ParseSummary(path string, apis []models.API, sloP95Ms float64, jsonPath str
 		}
 	}
 
-	job.SLOPass = job.OverallP95Ms > 0 && job.OverallP95Ms <= sloP95Ms
+	job.SLOPass = job.OverallP95Ms > 0 && job.OverallP95Ms <= sloP95Ms && job.ErrorRatePct == 0
 
 	results := make([]models.Result, 0, len(apis))
 	missingSubmetrics := 0
@@ -114,7 +114,7 @@ func ParseSummary(path string, apis []models.API, sloP95Ms float64, jsonPath str
 				res.ThroughputBps = v
 			}
 		}
-		res.SLOPass = res.P95Ms > 0 && res.P95Ms <= sloP95Ms
+		res.SLOPass = res.P95Ms > 0 && res.P95Ms <= sloP95Ms && res.ErrorRatePct == 0
 
 		results = append(results, res)
 	}
@@ -370,7 +370,7 @@ func buildResultsFromAgg(apis []models.API, aggs map[string]*agg, durationSec fl
 		res.P95Ms = percentile(a.values, 0.95)
 		res.P99Ms = percentile(a.values, 0.99)
 		res.ErrorRatePct = float64(a.failedCount) / float64(a.count) * 100
-		res.SLOPass = res.P95Ms > 0 && res.P95Ms <= sloP95Ms
+		res.SLOPass = res.P95Ms > 0 && res.P95Ms <= sloP95Ms && res.ErrorRatePct == 0
 		results = append(results, res)
 	}
 	return results

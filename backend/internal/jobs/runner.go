@@ -143,7 +143,7 @@ func Run(db *storage.DB, jobID string) error {
 		OverallP95Ms:  overallP95,
 		ErrorRatePct:  weighted(errorRateSum, totalReq),
 		ChecksPassPct: weighted(checksSum, totalReq),
-		SLOPass:       overallP95 > 0 && overallP95 <= defaultSLOP95Ms,
+		SLOPass:       overallP95 > 0 && overallP95 <= defaultSLOP95Ms && weighted(errorRateSum, totalReq) == 0,
 		Stage:         "done",
 		StageMessage:  "Completed",
 	}

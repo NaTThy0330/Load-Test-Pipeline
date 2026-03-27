@@ -1,0 +1,9 @@
+@import './fonts.css';
+@import './tailwind.css';
+@import './theme.css';
+
+html,
+body {
+  background: #0b0d12;
+  color: #f5f5f5;
+}
