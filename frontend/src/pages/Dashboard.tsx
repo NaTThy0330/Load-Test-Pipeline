@@ -59,18 +59,25 @@ export function Dashboard() {
               </div>
               <span className="text-xl font-semibold text-white">K6 LoadTest</span>
             </Link>
-            <Button onClick={() => window.print()} className="bg-white/10 text-white hover:bg-white/20">
-              <Download className="w-4 h-4 mr-2" />
-              Export PDF
-            </Button>
+            <div className="flex items-center gap-3">
+              <Link to="/upload">
+                <Button variant="outline" className="border-white/10 bg-white/5 text-white hover:bg-white/10">
+                  Back to Upload
+                </Button>
+              </Link>
+              <Button onClick={() => window.print()} className="bg-white/10 text-white hover:bg-white/20">
+                <Download className="w-4 h-4 mr-2" />
+                Export PDF
+              </Button>
+            </div>
           </div>
         </div>
       </nav>
 
       <div className="max-w-7xl mx-auto px-6 py-12">
         <div className="mb-10">
-          <h1 className="text-4xl font-bold text-white mb-3">Results</h1>
-          <p className="text-gray-400">Latest run summary and per‑API metrics</p>
+          <h1 className="text-4xl font-bold text-foreground mb-3">Results</h1>
+          <p className="text-muted-foreground">Latest run summary and per‑API metrics</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-10">
@@ -124,7 +131,7 @@ export function Dashboard() {
 
         <div className="overflow-auto rounded-2xl border border-white/5 bg-gray-900/50">
           <table className="min-w-[960px] w-full text-left text-sm">
-            <thead className="bg-white/5 text-xs uppercase tracking-wider text-gray-400">
+            <thead className="bg-white/5 text-xs uppercase tracking-wider text-muted-foreground">
               <tr>
                 <th className="px-4 py-3">
                   <HeaderWithTooltip label="API" tooltip="The API endpoint tested for this row." />
@@ -175,7 +182,7 @@ export function Dashboard() {
               ) : (
                 rows.map((row) => (
                   <tr key={row.id} className="border-t border-white/5">
-                    <td className="px-4 py-3 font-mono text-xs text-white break-all">
+                    <td className="px-4 py-3 font-mono text-xs text-foreground break-all">
                       {apiIndex[row.api_id] || row.api_id}
                     </td>
                     <td className="px-4 py-3">{row.req_count ?? 0}</td>
@@ -207,10 +214,10 @@ export function Dashboard() {
 function Stat({ label, value, tooltip }: { label: string; value: string | number; tooltip?: string }) {
   return (
     <div className="p-4 rounded-xl bg-gradient-to-br from-gray-900 to-gray-800/50 border border-white/5">
-      <div className="text-xs text-gray-400 mb-1">
+      <div className="text-xs text-muted-foreground mb-1">
         {tooltip ? <HeaderWithTooltip label={label} tooltip={tooltip} /> : label}
       </div>
-      <div className="text-2xl font-bold text-white">{value}</div>
+      <div className="text-2xl font-bold text-foreground">{value}</div>
     </div>
   )
 }

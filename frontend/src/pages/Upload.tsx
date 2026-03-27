@@ -101,6 +101,13 @@ export function Upload() {
       </nav>
 
       <div className="max-w-5xl mx-auto px-6 py-16">
+        <div className="mb-6">
+          <Link to="/" className="inline-flex">
+            <Button variant="outline" className="border-white/10 bg-white/5 text-white hover:bg-white/10">
+              Back to Home
+            </Button>
+          </Link>
+        </div>
         <div className="text-center mb-12">
           <h1 className="text-5xl font-bold text-white mb-4">Upload Your Files</h1>
           <p className="text-xl text-gray-400">Upload your API specification files to begin testing</p>

@@ -4,12 +4,11 @@ import { Activity, CheckCircle2, Globe, Search } from 'lucide-react'
 import { Button } from '../component/button'
 import { Input } from '../component/input'
 import { Checkbox } from '../component/checkbox'
-import { createJob, runJob } from '../lib/api'
 import { useTestContext } from '../context/TestContext'
 
 export function ApiList() {
   const navigate = useNavigate()
-  const { apis, setJob, setResults } = useTestContext()
+  const { apis, setApis, setJob, setResults } = useTestContext()
   const [selectedApis, setSelectedApis] = useState<number[]>(apis.map((_, i) => i))
   const [searchQuery, setSearchQuery] = useState('')
   const [loading, setLoading] = useState(false)
@@ -47,11 +46,10 @@ export function ApiList() {
       setLoading(true)
       setError('')
       const selected = selectedApis.map((idx) => apis[idx])
-      const data = await createJob(selected)
-      setJob(data.job)
+      setApis(selected)
+      setJob(null)
       setResults(null)
-      await runJob(data.job.id)
-      navigate('/loading')
+      navigate('/test-config')
     } catch (err: any) {
       setError(err.message || 'Failed to start test')
     } finally {
@@ -106,6 +104,13 @@ export function ApiList() {
       </nav>
 
       <div className="max-w-7xl mx-auto px-6 py-16">
+        <div className="mb-6">
+          <Link to="/upload" className="inline-flex">
+            <Button variant="outline" className="border-white/10 bg-white/5 text-white hover:bg-white/10">
+              Back to Upload
+            </Button>
+          </Link>
+        </div>
         <div className="mb-12">
           <h1 className="text-5xl font-bold text-white mb-4">Confirm API Endpoints</h1>
           <p className="text-xl text-gray-400">Review and select the APIs you want to test</p>

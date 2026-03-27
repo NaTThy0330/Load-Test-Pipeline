@@ -1,16 +1,26 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Activity, Zap, Loader2 } from 'lucide-react'
+import { Activity, Zap, Loader2, CheckCircle2, TrendingUp } from 'lucide-react'
 import { Progress } from '../component/progress'
 import { getJobResults, getJobStatus } from '../lib/api'
 import { useTestContext } from '../context/TestContext'
 
+const testPhases = [
+  { name: 'Initializing test environment', max: 10 },
+  { name: 'Starting k6 workers', max: 25 },
+  { name: 'Ramping up virtual users', max: 45 },
+  { name: 'Executing load tests', max: 70 },
+  { name: 'Collecting metrics', max: 90 },
+  { name: 'Processing results', max: 100 },
+]
+
 export function Loading() {
   const navigate = useNavigate()
-  const { job, setResults } = useTestContext()
+  const { job, apis, setResults } = useTestContext()
   const [progress, setProgress] = useState(0)
   const [eta, setEta] = useState(0)
   const [status, setStatus] = useState('running')
+  const [currentPhase, setCurrentPhase] = useState(0)
 
   useEffect(() => {
     if (!job?.id) {
@@ -22,8 +32,11 @@ export function Loading() {
       try {
         const data = await getJobStatus(job.id)
         setStatus(data.job.status)
-        setProgress(Math.round((data.progress || 0) * 100))
+        const nextProgress = Math.round((data.progress || 0) * 100)
+        setProgress(nextProgress)
         setEta(data.eta_seconds || 0)
+        const phaseIndex = testPhases.findIndex((phase) => nextProgress <= phase.max)
+        setCurrentPhase(phaseIndex === -1 ? testPhases.length - 1 : phaseIndex)
 
         if (data.job.status === 'done') {
           const results = await getJobResults(job.id)
@@ -42,9 +55,27 @@ export function Loading() {
     return () => clearInterval(interval)
   }, [job, navigate, setResults])
 
+  const completedPhases = testPhases
+    .map((phase, index) => (progress >= phase.max ? index : -1))
+    .filter((index) => index >= 0)
+
+  const requestsEstimate = Math.max(0, Math.floor((progress / 100) * 1000))
+  const apisEstimate = apis.length
+    ? Math.min(Math.floor((progress / 100) * apis.length) + 1, apis.length)
+    : 0
+  const rpsEstimate = Math.min(parseFloat(((progress / 100) * 10).toFixed(2)), 10)
+
   return (
     <div className="min-h-screen flex items-center justify-center">
       <div className="w-full max-w-4xl px-6">
+        <div className="mb-6">
+          <button
+            onClick={() => navigate('/test-config')}
+            className="inline-flex items-center gap-2 rounded-md border border-white/10 bg-white/5 px-4 py-2 text-sm text-white hover:bg-white/10"
+          >
+            Back to Test Config
+          </button>
+        </div>
         <div className="text-center mb-12">
           <div className="inline-flex items-center justify-center w-24 h-24 rounded-3xl bg-gradient-to-br from-blue-500 to-purple-600 mb-6 relative">
             <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-purple-600 rounded-3xl blur-2xl opacity-50 animate-pulse" />
@@ -57,12 +88,15 @@ export function Loading() {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-3">
             <span className="text-sm font-semibold text-gray-400">
-              {status === 'failed' ? 'Test failed' : 'Executing tests'}
+              {status === 'failed' ? 'Test failed' : testPhases[currentPhase]?.name}
             </span>
+            <span className="text-sm font-semibold text-blue-400">{progress}%</span>
           </div>
           <Progress value={progress} className="h-3" />
           <div className="flex items-center justify-between mt-2">
-            <span className="text-xs text-gray-500">Job ID: {job?.id || '—'}</span>
+            <span className="text-xs text-gray-500">
+              Phase {currentPhase + 1} of {testPhases.length}
+            </span>
             <span className="text-xs text-gray-500">ETA {eta}s</span>
           </div>
         </div>
@@ -70,26 +104,88 @@ export function Loading() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <div className="p-6 rounded-xl bg-gradient-to-br from-gray-900 to-gray-800/50 border border-white/5 backdrop-blur-xl">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-gray-400">Status</span>
+              <span className="text-sm text-gray-400">Requests Completed</span>
+              <TrendingUp className="w-4 h-4 text-green-400" />
+            </div>
+            <div className="text-3xl font-bold text-white">{requestsEstimate.toLocaleString()}</div>
+          </div>
+
+          <div className="p-6 rounded-xl bg-gradient-to-br from-gray-900 to-gray-800/50 border border-white/5 backdrop-blur-xl">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm text-gray-400">APIs Tested</span>
               <Activity className="w-4 h-4 text-blue-400" />
             </div>
-            <div className="text-2xl font-bold text-white">{status}</div>
+            <div className="text-3xl font-bold text-white">
+              {apisEstimate}{apis.length ? ` / ${apis.length}` : ''}
+            </div>
           </div>
 
           <div className="p-6 rounded-xl bg-gradient-to-br from-gray-900 to-gray-800/50 border border-white/5 backdrop-blur-xl">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-gray-400">Progress</span>
-              <Loader2 className="w-4 h-4 text-purple-400" />
+              <span className="text-sm text-gray-400">Current RPS</span>
+              <Zap className="w-4 h-4 text-purple-400" />
             </div>
-            <div className="text-2xl font-bold text-white">{progress}%</div>
+            <div className="text-3xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+              {rpsEstimate}
+            </div>
           </div>
+        </div>
 
-          <div className="p-6 rounded-xl bg-gradient-to-br from-gray-900 to-gray-800/50 border border-white/5 backdrop-blur-xl">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm text-gray-400">ETA</span>
-              <Zap className="w-4 h-4 text-green-400" />
+        <div className="p-6 rounded-2xl bg-gradient-to-br from-gray-900 to-gray-800/50 border border-white/5 backdrop-blur-xl">
+          <h3 className="text-sm font-semibold text-gray-400 mb-4">Test Phases</h3>
+          <div className="space-y-3">
+            {testPhases.map((phase, index) => (
+              <div key={phase.name} className="flex items-center gap-3">
+                <div
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all ${
+                    completedPhases.includes(index)
+                      ? 'bg-green-500 text-white'
+                      : index === currentPhase
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-gray-800 text-gray-600'
+                  }`}
+                >
+                  {completedPhases.includes(index) ? (
+                    <CheckCircle2 className="w-5 h-5" />
+                  ) : index === currentPhase ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <span className="text-xs font-semibold">{index + 1}</span>
+                  )}
+                </div>
+                <div className="flex-1">
+                  <div
+                    className={`text-sm font-medium transition-colors ${
+                      completedPhases.includes(index)
+                        ? 'text-green-400'
+                        : index === currentPhase
+                        ? 'text-white'
+                        : 'text-gray-600'
+                    }`}
+                  >
+                    {phase.name}
+                  </div>
+                </div>
+                {completedPhases.includes(index) && (
+                  <span className="text-xs text-green-400 font-semibold">Completed</span>
+                )}
+                {index === currentPhase && (
+                  <span className="text-xs text-blue-400 font-semibold">In Progress</span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-6 p-4 rounded-xl bg-blue-500/10 border border-blue-500/30">
+          <div className="flex items-start gap-3">
+            <Loader2 className="w-5 h-5 text-blue-400 mt-0.5 animate-spin" />
+            <div className="flex-1">
+              <div className="text-sm font-semibold text-blue-400 mb-1">Processing in Background</div>
+              <div className="text-sm text-gray-400">
+                Your test is running in parallel across multiple workers. Results will be available once all APIs complete testing.
+              </div>
             </div>
-            <div className="text-2xl font-bold text-white">{eta}s</div>
           </div>
         </div>
       </div>
