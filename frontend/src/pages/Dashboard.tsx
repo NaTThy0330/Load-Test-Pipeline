@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Activity, Download } from 'lucide-react'
+import { Activity, Download, BarChart3 } from 'lucide-react'
 import { Button } from '../component/button'
 import { Badge } from '../component/badge'
 import { Tooltip, TooltipContent, TooltipTrigger } from '../component/tooltip'
@@ -36,7 +36,7 @@ export function Dashboard() {
 
   if (!results) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-white">
+      <div className="min-h-screen flex items-center justify-center text-foreground">
         <div className="text-center">
           <p className="text-xl mb-4">Loading results...</p>
           {error && <p className="text-red-400">{error}</p>}
@@ -50,37 +50,36 @@ export function Dashboard() {
 
   return (
     <div className="min-h-screen pb-12">
-      <nav className="border-b border-white/5 backdrop-blur-xl bg-black/20">
+      <nav className="border-b border-white/5 backdrop-blur-xl bg-background/80">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <Link to="/" className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                <Activity className="w-6 h-6 text-white" />
+                <Activity className="w-6 h-6 text-foreground" />
               </div>
-              <span className="text-xl font-semibold text-white">K6 LoadTest</span>
+              <span className="text-xl font-semibold text-foreground">K6 LoadTest</span>
             </Link>
-            <div className="flex items-center gap-3">
-              <Link to="/upload">
-                <Button variant="outline" className="border-white/10 bg-white/5 text-white hover:bg-white/10">
-                  Back to Upload
-                </Button>
-              </Link>
-              <Button onClick={() => window.print()} className="bg-white/10 text-white hover:bg-white/20">
-                <Download className="w-4 h-4 mr-2" />
-                Export PDF
-              </Button>
-            </div>
+            <Button onClick={() => window.print()} className="bg-white/10 text-foreground hover:bg-white/20">
+              <Download className="w-4 h-4 mr-2" />
+              Export PDF
+            </Button>
           </div>
         </div>
       </nav>
 
       <div className="max-w-7xl mx-auto px-6 py-12">
         <div className="mb-10">
-          <h1 className="text-4xl font-bold text-foreground mb-3">Results</h1>
+          <h1 className="text-4xl font-bold text-foreground mb-3">Test Results</h1>
           <p className="text-muted-foreground">Latest run summary and per‑API metrics</p>
         </div>
+        
+        <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+            <BarChart3 className="w-5 h-5 text-blue-400" />
+            Summary
+        </h2>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-10">
+
           <Stat
             label="Duration"
             tooltip="Total test execution time, including ramp‑up and ramp‑down by metric iteration"
@@ -95,16 +94,22 @@ export function Dashboard() {
             label="Overall RPS"
             tooltip="Total requests per second across all APIs by metric http_reqs"
             value={formatNumber(summary.overall_rps)}
+            valueClassName="font-bold bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent"
+            cardClassName="border-cyan-400/30 bg-cyan-400/10"
           />
           <Stat
             label="Overall P95"
             tooltip="p95 response time across all APIs combined by metric http_req_duration"
             value={`${formatNumber(summary.overall_p95_ms)} ms`}
+            valueClassName="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent"
+            cardClassName="border-purple-400/30 bg-purple-400/10"
           />
           <Stat
             label="Error Rate"
             tooltip="Percentage of failed requests across all APIs. Failed means non‑2xx or network error by metric http_req_failed"
             value={`${formatNumber(summary.error_rate_pct)}%`}
+            valueClassName="text-2xl font-bold text-green-400"
+            cardClassName="border-green-400/30 bg-green-400/10"
           />
           <Stat
             label="Checks Pass"
@@ -115,11 +120,15 @@ export function Dashboard() {
             label="SLO Compliance"
             tooltip="Pass/Fail based on SLO threshold (p95 < 500ms and error rate = 0%)."
             value={summary.slo_pass ? 'Pass' : 'Fail'}
+            valueClassName="text-2xl font-bold text-green-400"
+            cardClassName="border-green-400/30 bg-green-400/10"
           />
           <Stat
             label="Total APIs"
             tooltip="Number of APIs included in this run."
             value={results.summary?.total_apis || results.apis.length}
+            valueClassName="text-2xl font-bold text-orange-400"
+            cardClassName="border-orange-400/30 bg-orange-400/10"
           />
         </div>
 
@@ -129,12 +138,18 @@ export function Dashboard() {
           </div>
         )}
 
+          <h2 className="text-xl font-semibold text-white mb-4 flex items-center gap-2">
+            <Activity className="w-5 h-5 text-purple-400" />
+            API Performance Metrics
+          </h2>
+
         <div className="overflow-auto rounded-2xl border border-white/5 bg-gray-900/50">
+
           <table className="min-w-[960px] w-full text-left text-sm">
             <thead className="bg-white/5 text-xs uppercase tracking-wider text-muted-foreground">
               <tr>
                 <th className="px-4 py-3">
-                  <HeaderWithTooltip label="API" tooltip="The API endpoint tested for this row." />
+                  <HeaderWithTooltip label="API" tooltip="The API endpoint tested for this row." /> 
                 </th>
                 <th className="px-4 py-3">
                   <HeaderWithTooltip label="Req Count" tooltip="Total number of requests sent to this API." />
@@ -186,18 +201,20 @@ export function Dashboard() {
                       {apiIndex[row.api_id] || row.api_id}
                     </td>
                     <td className="px-4 py-3">{row.req_count ?? 0}</td>
-                    <td className="px-4 py-3">{formatNumber(row.rps)}</td>
+                    <td className="px-4 py-3 text-sm font-semibold text-cyan-400">{formatNumber(row.rps)}</td>
                     <td className="px-4 py-3">{formatMs(row.avg_ms)}</td>
                     <td className="px-4 py-3">{formatMs(row.med_ms)}</td>
-                    <td className="px-4 py-3">{formatMs(row.p95_ms)}</td>
+                    <td className="px-4 py-3 text-sm font-semibold text-purple-400">{formatMs(row.p95_ms)}</td>
                     <td className="px-4 py-3">{formatMs(row.p99_ms)}</td>
                     <td className="px-4 py-3">{formatMs(row.min_ms)}</td>
-                    <td className="px-4 py-3">{formatMs(row.max_ms)}</td>
+                    <td className="px-4 py-3 text-sm text-orange-400">{formatMs(row.max_ms)}</td>
                     <td className="px-4 py-3">{formatNumber(row.error_rate_pct)}%</td>
                     <td className="px-4 py-3">{formatNumber(row.throughput_bps)}</td>
                     <td className="px-4 py-3">
                       <Badge variant={row.slo_pass ? 'default' : 'destructive'}>
-                        {row.slo_pass ? 'Pass' : 'Fail'}
+                        <span className={row.slo_pass ? 'text-green-400' : 'text-red-400'}>
+                          {row.slo_pass ? 'Pass' : 'Fail'}
+                        </span>
                       </Badge>
                     </td>
                   </tr>
@@ -207,17 +224,39 @@ export function Dashboard() {
           </table>
         </div>
       </div>
+
+      <Link to="/upload" className="fixed bottom-6 left-6 z-50">
+        <Button variant="outline" className="border-white/10 bg-white/5 text-foreground hover:bg-white/10">
+          Back to Upload
+        </Button>
+      </Link>
     </div>
   )
 }
 
-function Stat({ label, value, tooltip }: { label: string; value: string | number; tooltip?: string }) {
+function Stat({
+  label,
+  value,
+  tooltip,
+  valueClassName,
+  cardClassName,
+}: {
+  label: string
+  value: string | number
+  tooltip?: string
+  valueClassName?: string
+  cardClassName?: string
+}) {
   return (
-    <div className="p-4 rounded-xl bg-gradient-to-br from-gray-900 to-gray-800/50 border border-white/5">
+    <div
+      className={`p-4 rounded-xl bg-gradient-to-br from-gray-900 to-gray-800/50 border border-white/5 ${
+        cardClassName || ''
+      }`}
+    >
       <div className="text-xs text-muted-foreground mb-1">
         {tooltip ? <HeaderWithTooltip label={label} tooltip={tooltip} /> : label}
       </div>
-      <div className="text-2xl font-bold text-foreground">{value}</div>
+      <div className={valueClassName || 'text-2xl font-bold text-foreground'}>{value}</div>
     </div>
   )
 }

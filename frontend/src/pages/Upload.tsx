@@ -69,28 +69,28 @@ export function Upload() {
 
   return (
     <div className="min-h-screen">
-      <nav className="border-b border-white/5 backdrop-blur-xl bg-black/20">
+      <nav className="border-b border-white/5 backdrop-blur-xl bg-background/80">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <Link to="/" className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                <Activity className="w-6 h-6 text-white" />
+                <Activity className="w-6 h-6 text-foreground" />
               </div>
-              <span className="text-xl font-semibold text-white">K6 LoadTest</span>
+              <span className="text-xl font-semibold text-foreground">K6 LoadTest</span>
             </Link>
             <div className="flex items-center gap-8">
               <div className="flex items-center gap-4 text-sm">
                 <div className="flex items-center gap-2 text-blue-400">
-                  <div className="w-6 h-6 rounded-full bg-blue-500 text-white flex items-center justify-center text-xs font-semibold">1</div>
+                  <div className="w-6 h-6 rounded-full bg-blue-500 text-foreground flex items-center justify-center text-xs font-semibold">1</div>
                   <span>Upload</span>
                 </div>
                 <div className="w-8 h-0.5 bg-white/10" />
-                <div className="flex items-center gap-2 text-gray-600">
+                <div className="flex items-center gap-2 text-muted-foreground/60">
                   <div className="w-6 h-6 rounded-full bg-gray-800 flex items-center justify-center text-xs">2</div>
                   <span>Confirm</span>
                 </div>
                 <div className="w-8 h-0.5 bg-white/10" />
-                <div className="flex items-center gap-2 text-gray-600">
+                <div className="flex items-center gap-2 text-muted-foreground/60">
                   <div className="w-6 h-6 rounded-full bg-gray-800 flex items-center justify-center text-xs">3</div>
                   <span>Test</span>
                 </div>
@@ -101,16 +101,9 @@ export function Upload() {
       </nav>
 
       <div className="max-w-5xl mx-auto px-6 py-16">
-        <div className="mb-6">
-          <Link to="/" className="inline-flex">
-            <Button variant="outline" className="border-white/10 bg-white/5 text-white hover:bg-white/10">
-              Back to Home
-            </Button>
-          </Link>
-        </div>
         <div className="text-center mb-12">
-          <h1 className="text-5xl font-bold text-white mb-4">Upload Your Files</h1>
-          <p className="text-xl text-gray-400">Upload your API specification files to begin testing</p>
+          <h1 className="text-5xl font-bold text-foreground mb-4">Upload Your Files</h1>
+          <p className="text-xl text-muted-foreground">Upload your API specification files to begin testing</p>
         </div>
 
         {error && (
@@ -123,8 +116,8 @@ export function Upload() {
           <div className="p-8 rounded-2xl bg-gradient-to-br from-gray-900 to-gray-800/50 border border-white/5 backdrop-blur-xl">
             <div className="flex items-start justify-between mb-6">
               <div>
-                <h3 className="text-xl font-semibold text-white mb-2">API PDF File</h3>
-                <p className="text-gray-400">Upload your API documentation in PDF format</p>
+                <h3 className="text-xl font-semibold text-foreground mb-2">API PDF File</h3>
+                <p className="text-muted-foreground">Upload your API documentation in PDF format</p>
               </div>
               <div className="px-3 py-1 rounded-lg bg-red-500/20 border border-red-500/30 text-red-400 text-sm font-semibold">
                 Required
@@ -147,10 +140,10 @@ export function Upload() {
               >
                 <div className="flex flex-col items-center gap-4">
                   <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                    <FileText className="w-8 h-8 text-white" />
+                    <FileText className="w-8 h-8 text-foreground" />
                   </div>
                   <div>
-                    <p className="text-white font-medium mb-2">Drop your PDF file here or</p>
+                    <p className="text-foreground font-medium mb-2">Drop your PDF file here or</p>
                     <label className="cursor-pointer">
                       <span className="text-blue-400 hover:text-blue-300 font-medium">browse files</span>
                       <input
@@ -161,28 +154,28 @@ export function Upload() {
                       />
                     </label>
                   </div>
-                  <p className="text-sm text-gray-500">PDF files only, max 50MB</p>
+                  <p className="text-sm text-muted-foreground/70">PDF files only, max 50MB</p>
                 </div>
               </div>
             ) : (
               <div className="flex items-center justify-between p-6 rounded-xl bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/30">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-xl bg-green-500 flex items-center justify-center">
-                    <FileText className="w-6 h-6 text-white" />
+                    <FileText className="w-6 h-6 text-foreground" />
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <p className="text-white font-medium">{pdfFile.name}</p>
+                      <p className="text-foreground font-medium">{pdfFile.name}</p>
                       <CheckCircle2 className="w-5 h-5 text-green-400" />
                     </div>
-                    <p className="text-sm text-gray-400">{formatFileSize(pdfFile.size)}</p>
+                    <p className="text-sm text-muted-foreground">{formatFileSize(pdfFile.size)}</p>
                   </div>
                 </div>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setPdfFile(null)}
-                  className="text-gray-400 hover:text-white hover:bg-white/10"
+                  className="text-muted-foreground hover:text-foreground hover:bg-white/10"
                 >
                   <X className="w-5 h-5" />
                 </Button>
@@ -193,8 +186,8 @@ export function Upload() {
           <div className="p-8 rounded-2xl bg-gradient-to-br from-gray-900 to-gray-800/50 border border-white/5 backdrop-blur-xl">
             <div className="flex items-start justify-between mb-6">
               <div>
-                <h3 className="text-xl font-semibold text-white mb-2">CSS File</h3>
-                <p className="text-gray-400">Upload custom styles for your test configuration</p>
+                <h3 className="text-xl font-semibold text-foreground mb-2">CSS File</h3>
+                <p className="text-muted-foreground">Upload custom styles for your test configuration</p>
               </div>
               <div className="px-3 py-1 rounded-lg bg-blue-500/20 border border-blue-500/30 text-blue-400 text-sm font-semibold">
                 Optional
@@ -217,10 +210,10 @@ export function Upload() {
               >
                 <div className="flex flex-col items-center gap-4">
                   <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center">
-                    <File className="w-8 h-8 text-white" />
+                    <File className="w-8 h-8 text-foreground" />
                   </div>
                   <div>
-                    <p className="text-white font-medium mb-2">Drop your CSS file here or</p>
+                    <p className="text-foreground font-medium mb-2">Drop your CSS file here or</p>
                     <label className="cursor-pointer">
                       <span className="text-purple-400 hover:text-purple-300 font-medium">browse files</span>
                       <input
@@ -231,28 +224,28 @@ export function Upload() {
                       />
                     </label>
                   </div>
-                  <p className="text-sm text-gray-500">CSS files only, max 10MB</p>
+                  <p className="text-sm text-muted-foreground/70">CSS files only, max 10MB</p>
                 </div>
               </div>
             ) : (
               <div className="flex items-center justify-between p-6 rounded-xl bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/30">
                 <div className="flex items-center gap-4">
                   <div className="w-12 h-12 rounded-xl bg-purple-500 flex items-center justify-center">
-                    <File className="w-6 h-6 text-white" />
+                    <File className="w-6 h-6 text-foreground" />
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <p className="text-white font-medium">{cssFile.name}</p>
+                      <p className="text-foreground font-medium">{cssFile.name}</p>
                       <CheckCircle2 className="w-5 h-5 text-purple-400" />
                     </div>
-                    <p className="text-sm text-gray-400">{formatFileSize(cssFile.size)}</p>
+                    <p className="text-sm text-muted-foreground">{formatFileSize(cssFile.size)}</p>
                   </div>
                 </div>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setCssFile(null)}
-                  className="text-gray-400 hover:text-white hover:bg-white/10"
+                  className="text-muted-foreground hover:text-foreground hover:bg-white/10"
                 >
                   <X className="w-5 h-5" />
                 </Button>
@@ -263,7 +256,7 @@ export function Upload() {
           <div className="flex justify-end">
             <Button
               onClick={handleContinue}
-              className="bg-gradient-to-r from-blue-500 to-purple-600 text-white px-8 py-3 text-lg"
+              className="bg-gradient-to-r from-blue-500 to-purple-600 text-foreground px-8 py-3 text-lg"
               disabled={!pdfFile || loading}
             >
               {loading ? 'Uploading...' : 'Continue'}
@@ -272,6 +265,12 @@ export function Upload() {
           </div>
         </div>
       </div>
+
+      <Link to="/" className="fixed bottom-6 left-6 z-50">
+        <Button variant="outline" className="border-white/10 bg-white/5 text-foreground hover:bg-white/10">
+          Back to Home
+        </Button>
+      </Link>
     </div>
   )
 }
