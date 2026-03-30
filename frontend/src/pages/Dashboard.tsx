@@ -49,8 +49,8 @@ export function Dashboard() {
   const rows = results.results || []
 
   return (
-    <div className="min-h-screen pb-12">
-      <nav className="border-b border-white/5 backdrop-blur-xl bg-background/80">
+    <div className="min-h-screen pb-12 print-root">
+      <nav className="border-b border-white/5 backdrop-blur-xl bg-background/80 print-hidden">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <Link to="/" className="flex items-center gap-3">
@@ -143,9 +143,23 @@ export function Dashboard() {
             API Performance Metrics
           </h2>
 
-        <div className="overflow-auto rounded-2xl border border-white/5 bg-gray-900/50">
+        <div className="overflow-auto rounded-2xl border border-white/5 bg-gray-900/50 print-table-wrap">
 
-          <table className="min-w-[960px] w-full text-left text-sm">
+          <table className="min-w-[960px] w-full text-left text-sm print-table">
+            <colgroup>
+              <col className="print-col-api" />
+              <col className="print-col-sm" />
+              <col className="print-col-sm" />
+              <col className="print-col-sm" />
+              <col className="print-col-sm" />
+              <col className="print-col-sm" />
+              <col className="print-col-sm" />
+              <col className="print-col-sm" />
+              <col className="print-col-sm" />
+              <col className="print-col-sm" />
+              <col className="print-col-md" />
+              <col className="print-col-xs" />
+            </colgroup>
             <thead className="bg-white/5 text-xs uppercase tracking-wider text-muted-foreground">
               <tr>
                 <th className="px-4 py-3">
@@ -197,9 +211,16 @@ export function Dashboard() {
               ) : (
                 rows.map((row) => (
                   <tr key={row.id} className="border-t border-white/5">
-                    <td className="px-4 py-3 font-mono text-xs text-foreground break-all">
-                      {apiIndex[row.api_id] || row.api_id}
-                    </td>
+                    {(() => {
+                      const fullName = apiIndex[row.api_id] || row.api_id
+                      const shortName = formatApiShortName(fullName)
+                      return (
+                        <td className="px-4 py-3 font-mono text-xs text-foreground break-all" title={fullName}>
+                          <span className="screen-only">{fullName}</span>
+                          <span className="print-only">{shortName}</span>
+                        </td>
+                      )
+                    })()}
                     <td className="px-4 py-3">{row.req_count ?? 0}</td>
                     <td className="px-4 py-3 text-sm font-semibold text-cyan-400">{formatNumber(row.rps)}</td>
                     <td className="px-4 py-3">{formatMs(row.avg_ms)}</td>
@@ -225,7 +246,7 @@ export function Dashboard() {
         </div>
       </div>
 
-      <Link to="/upload" className="fixed bottom-6 left-6 z-50">
+      <Link to="/upload" className="fixed bottom-6 left-6 z-50 print-hidden">
         <Button variant="outline" className="border-white/10 bg-white/5 text-foreground hover:bg-white/10">
           Back to Upload
         </Button>
@@ -282,4 +303,22 @@ function formatNumber(value?: number) {
 function formatMs(value?: number) {
   if (value === undefined || value === null || Number.isNaN(value)) return '0 ms'
   return `${Number(value).toFixed(2)} ms`
+}
+
+function formatApiShortName(value: string) {
+  const trimmed = value?.trim()
+  if (!trimmed) return ''
+
+  const candidate = (() => {
+    try {
+      const url = new URL(trimmed)
+      return url.pathname || trimmed
+    } catch {
+      return trimmed
+    }
+  })()
+
+  const parts = candidate.split('/').filter(Boolean)
+  if (parts.length === 0) return trimmed
+  return parts[parts.length - 1]
 }
