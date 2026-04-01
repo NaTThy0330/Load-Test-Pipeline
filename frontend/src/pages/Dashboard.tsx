@@ -47,6 +47,20 @@ export function Dashboard() {
 
   const summary = results.job
   const rows = results.results || []
+  const totalApis = rows.length || results.apis.length
+  const passCount = rows.filter((row) => row.slo_pass).length
+  const sloPercent = totalApis > 0 ? Math.round((passCount / totalApis) * 100) : 0
+  const sloTooltip =
+    summary.threshold_p95_ms && summary.threshold_p99_ms && summary.threshold_error_rate_pct !== undefined
+      ? `SLO compliance across APIs. Thresholds: p95 < ${summary.threshold_p95_ms}ms, p99 < ${summary.threshold_p99_ms}ms, error rate < ${summary.threshold_error_rate_pct}%, success rate > ${summary.threshold_success_rate_pct ?? 0}%.`
+      : 'SLO compliance across APIs based on default thresholds.'
+  const checksPassIsNA =
+    summary.checks_pass_pct === 0 &&
+    (summary.total_requests || 0) > 0 &&
+    (summary.error_rate_pct || 0) === 0
+  const checksTooltip = checksPassIsNA
+    ? 'Checks metric not reported by k6 for this run.'
+    : 'Percentage of defined checks that passed status 200 by metric checks'
 
   return (
     <div className="min-h-screen pb-12 print-root">
@@ -113,13 +127,13 @@ export function Dashboard() {
           />
           <Stat
             label="Checks Pass"
-            tooltip="Percentage of defined checks that passed status 200 by metric checks"
-            value={`${formatNumber(summary.checks_pass_pct)}%`}
+            tooltip={checksTooltip}
+            value={checksPassIsNA ? 'N/A' : `${formatNumber(summary.checks_pass_pct)}%`}
           />
           <Stat
             label="SLO Compliance"
-            tooltip="Pass/Fail based on SLO threshold (p95 < 500ms and error rate = 0%)."
-            value={summary.slo_pass ? 'Pass' : 'Fail'}
+            tooltip={sloTooltip}
+            value={`${sloPercent}%`}
             valueClassName="text-2xl font-bold text-green-400"
             cardClassName="border-green-400/30 bg-green-400/10"
           />

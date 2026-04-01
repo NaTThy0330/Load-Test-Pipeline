@@ -53,9 +53,18 @@ func migrate(db *sql.DB) error {
 			total_requests INTEGER,
 			overall_rps REAL,
 			overall_p95_ms REAL,
+			overall_p99_ms REAL,
 			error_rate_pct REAL,
 			checks_pass_pct REAL,
-			slo_pass INTEGER
+			slo_pass INTEGER,
+			config_vus INTEGER,
+			config_ramp_up_sec INTEGER,
+			config_duration_sec INTEGER,
+			config_ramp_down_sec INTEGER,
+			threshold_p95_ms REAL,
+			threshold_p99_ms REAL,
+			threshold_error_rate_pct REAL,
+			threshold_success_rate_pct REAL
 		);`,
 		`CREATE TABLE IF NOT EXISTS apis (
 			id TEXT PRIMARY KEY,
@@ -111,6 +120,33 @@ func migrate(db *sql.DB) error {
 		return err
 	}
 	if err := ensureColumn(db, "jobs", "stage_message", "TEXT"); err != nil {
+		return err
+	}
+	if err := ensureColumn(db, "jobs", "overall_p99_ms", "REAL"); err != nil {
+		return err
+	}
+	if err := ensureColumn(db, "jobs", "config_vus", "INTEGER"); err != nil {
+		return err
+	}
+	if err := ensureColumn(db, "jobs", "config_ramp_up_sec", "INTEGER"); err != nil {
+		return err
+	}
+	if err := ensureColumn(db, "jobs", "config_duration_sec", "INTEGER"); err != nil {
+		return err
+	}
+	if err := ensureColumn(db, "jobs", "config_ramp_down_sec", "INTEGER"); err != nil {
+		return err
+	}
+	if err := ensureColumn(db, "jobs", "threshold_p95_ms", "REAL"); err != nil {
+		return err
+	}
+	if err := ensureColumn(db, "jobs", "threshold_p99_ms", "REAL"); err != nil {
+		return err
+	}
+	if err := ensureColumn(db, "jobs", "threshold_error_rate_pct", "REAL"); err != nil {
+		return err
+	}
+	if err := ensureColumn(db, "jobs", "threshold_success_rate_pct", "REAL"); err != nil {
 		return err
 	}
 	if err := ensureColumn(db, "apis", "headers", "TEXT"); err != nil {

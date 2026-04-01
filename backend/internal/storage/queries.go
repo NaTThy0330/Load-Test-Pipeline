@@ -10,9 +10,11 @@ import (
 
 func (db *DB) CreateJob(job models.Job) error {
 	_, err := db.Exec(`INSERT INTO jobs (
-		id, created_at, started_at, finished_at, status, stage, stage_message, test_type, duration_sec, total_requests, overall_rps, overall_p95_ms, error_rate_pct, checks_pass_pct, slo_pass
-	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		job.ID, job.CreatedAt, job.StartedAt, job.FinishedAt, job.Status, job.Stage, job.StageMessage, job.TestType, job.DurationSec, job.TotalRequests, job.OverallRPS, job.OverallP95Ms, job.ErrorRatePct, job.ChecksPassPct, boolToInt(job.SLOPass))
+		id, created_at, started_at, finished_at, status, stage, stage_message, test_type, duration_sec, total_requests, overall_rps, overall_p95_ms, overall_p99_ms, error_rate_pct, checks_pass_pct, slo_pass,
+		config_vus, config_ramp_up_sec, config_duration_sec, config_ramp_down_sec, threshold_p95_ms, threshold_p99_ms, threshold_error_rate_pct, threshold_success_rate_pct
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		job.ID, job.CreatedAt, job.StartedAt, job.FinishedAt, job.Status, job.Stage, job.StageMessage, job.TestType, job.DurationSec, job.TotalRequests, job.OverallRPS, job.OverallP95Ms, job.OverallP99Ms, job.ErrorRatePct, job.ChecksPassPct, boolToInt(job.SLOPass),
+		job.ConfigVUs, job.ConfigRampUpSec, job.ConfigDurationSec, job.ConfigRampDownSec, job.ThresholdP95Ms, job.ThresholdP99Ms, job.ThresholdErrorRatePct, job.ThresholdSuccessRatePct)
 	return err
 }
 
@@ -27,6 +29,7 @@ func (db *DB) UpdateJobMetrics(job models.Job) error {
 		total_requests = ?,
 		overall_rps = ?,
 		overall_p95_ms = ?,
+		overall_p99_ms = ?,
 		error_rate_pct = ?,
 		checks_pass_pct = ?,
 		slo_pass = ?,
@@ -35,7 +38,7 @@ func (db *DB) UpdateJobMetrics(job models.Job) error {
 		stage_message = ?,
 		status = ?
 	WHERE id = ?`,
-		job.DurationSec, job.TotalRequests, job.OverallRPS, job.OverallP95Ms, job.ErrorRatePct, job.ChecksPassPct, boolToInt(job.SLOPass), job.FinishedAt, job.Stage, job.StageMessage, job.Status, job.ID)
+		job.DurationSec, job.TotalRequests, job.OverallRPS, job.OverallP95Ms, job.OverallP99Ms, job.ErrorRatePct, job.ChecksPassPct, boolToInt(job.SLOPass), job.FinishedAt, job.Stage, job.StageMessage, job.Status, job.ID)
 	return err
 }
 
@@ -109,10 +112,13 @@ func (db *DB) CreateSummary(summary models.Summary) error {
 }
 
 func (db *DB) GetJob(id string) (models.Job, error) {
-	row := db.QueryRow(`SELECT id, created_at, started_at, finished_at, status, stage, stage_message, test_type, duration_sec, total_requests, overall_rps, overall_p95_ms, error_rate_pct, checks_pass_pct, slo_pass FROM jobs WHERE id = ?`, id)
+	row := db.QueryRow(`SELECT id, created_at, started_at, finished_at, status, stage, stage_message, test_type, duration_sec, total_requests, overall_rps, overall_p95_ms, overall_p99_ms, error_rate_pct, checks_pass_pct, slo_pass,
+		config_vus, config_ramp_up_sec, config_duration_sec, config_ramp_down_sec, threshold_p95_ms, threshold_p99_ms, threshold_error_rate_pct, threshold_success_rate_pct
+		FROM jobs WHERE id = ?`, id)
 	var job models.Job
 	var sloPassInt int
-	if err := row.Scan(&job.ID, &job.CreatedAt, &job.StartedAt, &job.FinishedAt, &job.Status, &job.Stage, &job.StageMessage, &job.TestType, &job.DurationSec, &job.TotalRequests, &job.OverallRPS, &job.OverallP95Ms, &job.ErrorRatePct, &job.ChecksPassPct, &sloPassInt); err != nil {
+	if err := row.Scan(&job.ID, &job.CreatedAt, &job.StartedAt, &job.FinishedAt, &job.Status, &job.Stage, &job.StageMessage, &job.TestType, &job.DurationSec, &job.TotalRequests, &job.OverallRPS, &job.OverallP95Ms, &job.OverallP99Ms, &job.ErrorRatePct, &job.ChecksPassPct, &sloPassInt,
+		&job.ConfigVUs, &job.ConfigRampUpSec, &job.ConfigDurationSec, &job.ConfigRampDownSec, &job.ThresholdP95Ms, &job.ThresholdP99Ms, &job.ThresholdErrorRatePct, &job.ThresholdSuccessRatePct); err != nil {
 		return models.Job{}, err
 	}
 	job.SLOPass = sloPassInt == 1

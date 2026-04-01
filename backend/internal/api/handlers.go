@@ -35,7 +35,8 @@ type uploadResponse struct {
 }
 
 type createJobRequest struct {
-	APIs []models.API `json:"apis"`
+	APIs   []models.API      `json:"apis"`
+	Config *models.JobConfig `json:"config"`
 }
 
 type createJobResponse struct {
@@ -125,11 +126,20 @@ func (s *Server) handleCreateJob(w http.ResponseWriter, r *http.Request) {
 	}
 
 	jobID := uuid.NewString()
+	cfg := normalizeJobConfig(req.Config)
 	job := models.Job{
-		ID:        jobID,
-		CreatedAt: storage.NowISO(),
-		Status:    "queued",
-		TestType:  "load",
+		ID:                      jobID,
+		CreatedAt:               storage.NowISO(),
+		Status:                  "queued",
+		TestType:                "load",
+		ConfigVUs:               cfg.VUs,
+		ConfigRampUpSec:         cfg.RampUpSec,
+		ConfigDurationSec:       cfg.DurationSec,
+		ConfigRampDownSec:       cfg.RampDownSec,
+		ThresholdP95Ms:          cfg.P95Ms,
+		ThresholdP99Ms:          cfg.P99Ms,
+		ThresholdErrorRatePct:   cfg.ErrorRatePct,
+		ThresholdSuccessRatePct: cfg.SuccessRatePct,
 	}
 	if err := s.db.CreateJob(job); err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
@@ -155,6 +165,48 @@ func (s *Server) handleCreateJob(w http.ResponseWriter, r *http.Request) {
 	_ = s.db.TouchSummary(jobID, len(apis), "")
 
 	writeJSON(w, http.StatusOK, createJobResponse{Job: job, APIs: apis})
+}
+
+func normalizeJobConfig(cfg *models.JobConfig) models.JobConfig {
+	defaults := models.JobConfig{
+		VUs:            100,
+		RampUpSec:      300,
+		DurationSec:    600,
+		RampDownSec:    120,
+		P95Ms:          500,
+		P99Ms:          1000,
+		ErrorRatePct:   0.1,
+		SuccessRatePct: 99.9,
+	}
+	if cfg == nil {
+		return defaults
+	}
+	out := defaults
+	if cfg.VUs > 0 {
+		out.VUs = cfg.VUs
+	}
+	if cfg.RampUpSec > 0 {
+		out.RampUpSec = cfg.RampUpSec
+	}
+	if cfg.DurationSec > 0 {
+		out.DurationSec = cfg.DurationSec
+	}
+	if cfg.RampDownSec > 0 {
+		out.RampDownSec = cfg.RampDownSec
+	}
+	if cfg.P95Ms > 0 {
+		out.P95Ms = cfg.P95Ms
+	}
+	if cfg.P99Ms > 0 {
+		out.P99Ms = cfg.P99Ms
+	}
+	if cfg.ErrorRatePct >= 0 {
+		out.ErrorRatePct = cfg.ErrorRatePct
+	}
+	if cfg.SuccessRatePct > 0 {
+		out.SuccessRatePct = cfg.SuccessRatePct
+	}
+	return out
 }
 
 func (s *Server) handleRunJob(w http.ResponseWriter, r *http.Request) {
@@ -290,7 +342,7 @@ func estimateProgress(job models.Job) (float64, int) {
 		return 0, 0
 	}
 	elapsed := time.Since(started)
-	expected := 3 * time.Minute
+	expected := time.Duration(totalExpectedSeconds(job)) * time.Second
 	progress := float64(elapsed) / float64(expected)
 	if progress > 1 {
 		progress = 1
@@ -300,4 +352,24 @@ func estimateProgress(job models.Job) (float64, int) {
 		eta = 0
 	}
 	return progress, eta
+}
+
+func totalExpectedSeconds(job models.Job) int {
+	rampUp := job.ConfigRampUpSec
+	duration := job.ConfigDurationSec
+	rampDown := job.ConfigRampDownSec
+	if rampUp <= 0 {
+		rampUp = 300
+	}
+	if duration <= 0 {
+		duration = 600
+	}
+	if rampDown <= 0 {
+		rampDown = 120
+	}
+	total := rampUp + duration + rampDown
+	if total <= 0 {
+		return 180
+	}
+	return total
 }

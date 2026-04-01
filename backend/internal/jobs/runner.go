@@ -14,7 +14,16 @@ import (
 	"sylo/internal/storage"
 )
 
-const defaultSLOP95Ms = 500
+const (
+	defaultSLOP95Ms          = 500
+	defaultSLOP99Ms          = 1000
+	defaultSLOErrorRatePct   = 0.1
+	defaultSLOSuccessRatePct = 99.9
+	defaultVUs               = 100
+	defaultRampUpSec         = 300
+	defaultDurationSec       = 600
+	defaultRampDownSec       = 120
+)
 
 func Run(db *storage.DB, jobID string) error {
 	if err := db.MarkJobStarted(jobID, storage.NowISO()); err != nil {
@@ -22,6 +31,12 @@ func Run(db *storage.DB, jobID string) error {
 	}
 
 	_ = db.UpdateJobStage(jobID, "load_apis", "Loading APIs for this job")
+	jobConfig, err := db.GetJob(jobID)
+	if err != nil {
+		_ = db.SetJobFailed(jobID, err.Error())
+		return err
+	}
+	cfg := normalizeConfig(jobConfig)
 	apis, err := db.ListAPIsByJob(jobID)
 	if err != nil {
 		_ = db.SetJobFailed(jobID, err.Error())
@@ -53,7 +68,7 @@ func Run(db *storage.DB, jobID string) error {
 			_ = db.UpdateJobStage(jobID, "run_k6", stageMsg)
 
 			outDir := filepath.Join("data", "runs", jobID, api.ID)
-			scriptPath, err := k6.WriteScript(outDir, []models.API{api})
+			scriptPath, err := k6.WriteScript(outDir, []models.API{api}, cfg)
 			if err != nil {
 				resultsCh <- runResult{err: err}
 				return
@@ -71,7 +86,7 @@ func Run(db *storage.DB, jobID string) error {
 			}
 			_ = writeRunLogs(outDir, result.Stdout, result.Stderr)
 
-			parsed, err := metrics.ParseSummary(result.SummaryPath, []models.API{api}, defaultSLOP95Ms, result.JSONPath)
+			parsed, err := metrics.ParseSummary(result.SummaryPath, []models.API{api}, cfg.ThresholdP95Ms, cfg.ThresholdP99Ms, cfg.ThresholdErrorRatePct, cfg.ThresholdSuccessRatePct, result.JSONPath)
 			if err != nil {
 				resultsCh <- runResult{err: err}
 				return
@@ -96,6 +111,7 @@ func Run(db *storage.DB, jobID string) error {
 	var totalReq int
 	var overallRPS float64
 	var overallP95 float64
+	var overallP99 float64
 	var errorRateSum float64
 	var checksSum float64
 	var durationSec int
@@ -115,6 +131,9 @@ func Run(db *storage.DB, jobID string) error {
 		}
 		if r.job.OverallP95Ms > overallP95 {
 			overallP95 = r.job.OverallP95Ms
+		}
+		if r.job.OverallP99Ms > overallP99 {
+			overallP99 = r.job.OverallP99Ms
 		}
 		if r.job.DurationSec > durationSec {
 			durationSec = r.job.DurationSec
@@ -141,9 +160,10 @@ func Run(db *storage.DB, jobID string) error {
 		TotalRequests: totalReq,
 		OverallRPS:    overallRPS,
 		OverallP95Ms:  overallP95,
+		OverallP99Ms:  overallP99,
 		ErrorRatePct:  weighted(errorRateSum, totalReq),
 		ChecksPassPct: weighted(checksSum, totalReq),
-		SLOPass:       overallP95 > 0 && overallP95 <= defaultSLOP95Ms && weighted(errorRateSum, totalReq) == 0,
+		SLOPass:       passesSLO(overallP95, overallP99, weighted(errorRateSum, totalReq), cfg.ThresholdP95Ms, cfg.ThresholdP99Ms, cfg.ThresholdErrorRatePct, cfg.ThresholdSuccessRatePct),
 		Stage:         "done",
 		StageMessage:  "Completed",
 	}
@@ -161,6 +181,48 @@ func Run(db *storage.DB, jobID string) error {
 	_ = db.CreateSummary(summary)
 
 	return nil
+}
+
+func normalizeConfig(job models.Job) models.Job {
+	if job.ConfigVUs <= 0 {
+		job.ConfigVUs = defaultVUs
+	}
+	if job.ConfigRampUpSec <= 0 {
+		job.ConfigRampUpSec = defaultRampUpSec
+	}
+	if job.ConfigDurationSec <= 0 {
+		job.ConfigDurationSec = defaultDurationSec
+	}
+	if job.ConfigRampDownSec <= 0 {
+		job.ConfigRampDownSec = defaultRampDownSec
+	}
+	if job.ThresholdP95Ms <= 0 {
+		job.ThresholdP95Ms = defaultSLOP95Ms
+	}
+	if job.ThresholdP99Ms <= 0 {
+		job.ThresholdP99Ms = defaultSLOP99Ms
+	}
+	if job.ThresholdErrorRatePct < 0 {
+		job.ThresholdErrorRatePct = defaultSLOErrorRatePct
+	}
+	if job.ThresholdSuccessRatePct <= 0 {
+		job.ThresholdSuccessRatePct = defaultSLOSuccessRatePct
+	}
+	return job
+}
+
+func passesSLO(p95, p99, errorRatePct, maxP95, maxP99, maxErrorRatePct, minSuccessRatePct float64) bool {
+	if p95 <= 0 || p99 <= 0 {
+		return false
+	}
+	if p95 > maxP95 || p99 > maxP99 {
+		return false
+	}
+	if errorRatePct > maxErrorRatePct {
+		return false
+	}
+	successRate := 100 - errorRatePct
+	return successRate >= minSuccessRatePct
 }
 
 func weighted(sum float64, total int) float64 {

@@ -10,7 +10,7 @@ import (
 	"sylo/internal/models"
 )
 
-func WriteScript(outDir string, apis []models.API) (string, error) {
+func WriteScript(outDir string, apis []models.API, job models.Job) (string, error) {
 	if err := os.MkdirAll(outDir, 0o755); err != nil {
 		return "", err
 	}
@@ -23,11 +23,17 @@ func WriteScript(outDir string, apis []models.API) (string, error) {
 	var b strings.Builder
 	b.WriteString("import http from 'k6/http';\n")
 	b.WriteString("import { check, sleep } from 'k6';\n\n")
-	b.WriteString("export const options = { stages: [\n")
-	b.WriteString("  { duration: '30s', target: 10 },\n")
-	b.WriteString("  { duration: '2m', target: 10 },\n")
-	b.WriteString("  { duration: '30s', target: 0 },\n")
-	b.WriteString("] };\n\n")
+	b.WriteString("export const options = {\n")
+	b.WriteString("  stages: [\n")
+	b.WriteString(fmt.Sprintf("    { duration: '%ds', target: %d },\n", job.ConfigRampUpSec, job.ConfigVUs))
+	b.WriteString(fmt.Sprintf("    { duration: '%ds', target: %d },\n", job.ConfigDurationSec, job.ConfigVUs))
+	b.WriteString(fmt.Sprintf("    { duration: '%ds', target: 0 },\n", job.ConfigRampDownSec))
+	b.WriteString("  ],\n")
+	b.WriteString("  thresholds: {\n")
+	b.WriteString(fmt.Sprintf("    http_req_duration: ['p(95)<%s', 'p(99)<%s'],\n", formatFloat(job.ThresholdP95Ms), formatFloat(job.ThresholdP99Ms)))
+	b.WriteString(fmt.Sprintf("    http_req_failed: ['rate<%s'],\n", formatFloat(job.ThresholdErrorRatePct/100)))
+	b.WriteString("  },\n")
+	b.WriteString("};\n\n")
 	b.WriteString("const apis = [\n")
 	for _, api := range apis {
 		method := strings.ToUpper(api.Method)
@@ -100,4 +106,8 @@ func jsString(value string) string {
 		return "''"
 	}
 	return strconv.Quote(value)
+}
+
+func formatFloat(value float64) string {
+	return strconv.FormatFloat(value, 'f', -1, 64)
 }

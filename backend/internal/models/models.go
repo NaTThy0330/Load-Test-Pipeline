@@ -13,21 +13,41 @@ type API struct {
 }
 
 type Job struct {
-	ID            string  `json:"id"`
-	CreatedAt     string  `json:"created_at"`
-	StartedAt     string  `json:"started_at"`
-	FinishedAt    string  `json:"finished_at"`
-	Status        string  `json:"status"`
-	Stage         string  `json:"stage"`
-	StageMessage  string  `json:"stage_message"`
-	TestType      string  `json:"test_type"`
-	DurationSec   int     `json:"duration_sec"`
-	TotalRequests int     `json:"total_requests"`
-	OverallRPS    float64 `json:"overall_rps"`
-	OverallP95Ms  float64 `json:"overall_p95_ms"`
-	ErrorRatePct  float64 `json:"error_rate_pct"`
-	ChecksPassPct float64 `json:"checks_pass_pct"`
-	SLOPass       bool    `json:"slo_pass"`
+	ID                      string  `json:"id"`
+	CreatedAt               string  `json:"created_at"`
+	StartedAt               string  `json:"started_at"`
+	FinishedAt              string  `json:"finished_at"`
+	Status                  string  `json:"status"`
+	Stage                   string  `json:"stage"`
+	StageMessage            string  `json:"stage_message"`
+	TestType                string  `json:"test_type"`
+	DurationSec             int     `json:"duration_sec"`
+	TotalRequests           int     `json:"total_requests"`
+	OverallRPS              float64 `json:"overall_rps"`
+	OverallP95Ms            float64 `json:"overall_p95_ms"`
+	OverallP99Ms            float64 `json:"overall_p99_ms"`
+	ErrorRatePct            float64 `json:"error_rate_pct"`
+	ChecksPassPct           float64 `json:"checks_pass_pct"`
+	SLOPass                 bool    `json:"slo_pass"`
+	ConfigVUs               int     `json:"config_vus"`
+	ConfigRampUpSec         int     `json:"config_ramp_up_sec"`
+	ConfigDurationSec       int     `json:"config_duration_sec"`
+	ConfigRampDownSec       int     `json:"config_ramp_down_sec"`
+	ThresholdP95Ms          float64 `json:"threshold_p95_ms"`
+	ThresholdP99Ms          float64 `json:"threshold_p99_ms"`
+	ThresholdErrorRatePct   float64 `json:"threshold_error_rate_pct"`
+	ThresholdSuccessRatePct float64 `json:"threshold_success_rate_pct"`
+}
+
+type JobConfig struct {
+	VUs            int     `json:"vus"`
+	RampUpSec      int     `json:"ramp_up_sec"`
+	DurationSec    int     `json:"duration_sec"`
+	RampDownSec    int     `json:"ramp_down_sec"`
+	P95Ms          float64 `json:"p95_ms"`
+	P99Ms          float64 `json:"p99_ms"`
+	ErrorRatePct   float64 `json:"error_rate_pct"`
+	SuccessRatePct float64 `json:"success_rate_pct"`
 }
 
 type Result struct {

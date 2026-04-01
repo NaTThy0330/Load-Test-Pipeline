@@ -89,7 +89,9 @@ export function Loading() {
             <span className="text-xs text-muted-foreground/70">
               Phase {currentPhase + 1} of {testPhases.length}
             </span>
-            <span className="text-xs text-muted-foreground/70">ETA {eta}s</span>
+            <span className="text-xs text-muted-foreground/70">
+              ETA {eta >= 60 ? `${Math.ceil(eta / 60)} min` : `${eta}s`}
+            </span>
           </div>
         </div>
 

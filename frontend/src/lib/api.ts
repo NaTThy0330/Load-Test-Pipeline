@@ -22,9 +22,29 @@ export type Job = {
   total_requests?: number
   overall_rps?: number
   overall_p95_ms?: number
+  overall_p99_ms?: number
   error_rate_pct?: number
   checks_pass_pct?: number
   slo_pass?: boolean
+  config_vus?: number
+  config_ramp_up_sec?: number
+  config_duration_sec?: number
+  config_ramp_down_sec?: number
+  threshold_p95_ms?: number
+  threshold_p99_ms?: number
+  threshold_error_rate_pct?: number
+  threshold_success_rate_pct?: number
+}
+
+export type JobConfig = {
+  vus: number
+  ramp_up_sec: number
+  duration_sec: number
+  ramp_down_sec: number
+  p95_ms: number
+  p99_ms: number
+  error_rate_pct: number
+  success_rate_pct: number
 }
 
 export type Summary = {
@@ -77,11 +97,11 @@ export async function uploadFiles(
   return data as { apis: ApiItem[]; count: number }
 }
 
-export async function createJob(apis: ApiItem[]) {
+export async function createJob(apis: ApiItem[], config?: JobConfig) {
   const res = await fetch(`${API_BASE}/api/jobs`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ apis }),
+    body: JSON.stringify({ apis, config }),
   })
   const data = await res.json()
   if (!res.ok) throw new Error(data.error || 'Create job failed')

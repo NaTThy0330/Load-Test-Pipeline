@@ -2,6 +2,8 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Activity, CheckCircle2, Zap, TrendingUp, Target, ArrowRight, Lock } from 'lucide-react'
 import { Button } from '../component/button'
+import { Input } from '../component/input'
+import { Drawer, DrawerClose, DrawerContent, DrawerDescription, DrawerFooter, DrawerHeader, DrawerTitle, DrawerTrigger } from '../component/drawer'
 import { createJob, runJob } from '../lib/api'
 import { useTestContext } from '../context/TestContext'
 
@@ -41,12 +43,27 @@ const testModes = [
   },
 ]
 
+const DEFAULT_CONFIG = {
+  vus: 100,
+  rampUpMin: 5,
+  durationMin: 10,
+  rampDownMin: 2,
+  p95Ms: 500,
+  p99Ms: 1000,
+  errorRatePct: 0.1,
+  successRatePct: 99.9,
+}
+
 export function TestConfig() {
   const navigate = useNavigate()
   const { apis, setJob, setResults } = useTestContext()
   const [selectedMode, setSelectedMode] = useState('loadtest')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const [config, setConfig] = useState(DEFAULT_CONFIG)
+  const [draftConfig, setDraftConfig] = useState(DEFAULT_CONFIG)
+  const totalMinutes = config.rampUpMin + config.durationMin + config.rampDownMin
 
   const handleStartTest = async () => {
     if (!apis.length) {
@@ -56,7 +73,16 @@ export function TestConfig() {
     try {
       setLoading(true)
       setError('')
-      const data = await createJob(apis)
+      const data = await createJob(apis, {
+        vus: config.vus,
+        ramp_up_sec: Math.round(config.rampUpMin * 60),
+        duration_sec: Math.round(config.durationMin * 60),
+        ramp_down_sec: Math.round(config.rampDownMin * 60),
+        p95_ms: config.p95Ms,
+        p99_ms: config.p99Ms,
+        error_rate_pct: config.errorRatePct,
+        success_rate_pct: config.successRatePct,
+      })
       setJob(data.job)
       setResults(null)
       await runJob(data.job.id)
@@ -173,31 +199,169 @@ export function TestConfig() {
 
         {selectedMode === 'loadtest' && (
           <div className="p-8 rounded-2xl bg-gradient-to-br from-gray-900 to-gray-800/50 border border-white/5 backdrop-blur-xl mb-12">
-            <h3 className="text-xl font-semibold text-foreground mb-6">Load Test Configuration</h3>
+            <div className="flex items-start justify-between gap-6 mb-6">
+              <div>
+                <h3 className="text-xl font-semibold text-foreground mb-2">Load Test Configuration</h3>
+                <p className="text-sm text-muted-foreground">Default threshold criteria applied to every run.</p>
+                <div className="mt-4 space-y-1 text-sm text-muted-foreground">
+                  <div>- P95 latency &lt; {config.p95Ms} ms</div>
+                  <div>- P99 latency &lt; {config.p99Ms} ms</div>
+                  <div>- Error rate &lt; {config.errorRatePct}%</div>
+                  <div>- Success rate &gt; {config.successRatePct}%</div>
+                </div>
+              </div>
+
+              <Drawer
+                open={drawerOpen}
+                onOpenChange={(open) => {
+                  setDrawerOpen(open)
+                  if (open) setDraftConfig(config)
+                }}
+              >
+                <DrawerTrigger asChild>
+                  <Button variant="outline" className="border-white/10 bg-white/5 text-foreground hover:bg-white/10">
+                    Edit Values
+                  </Button>
+                </DrawerTrigger>
+                <DrawerContent className="bg-gray-950 text-foreground border-white/10">
+                  <DrawerHeader>
+                    <DrawerTitle>Customize Load Test</DrawerTitle>
+                    <DrawerDescription>Adjust thresholds and load settings in minutes.</DrawerDescription>
+                  </DrawerHeader>
+
+                  <div className="px-4 pb-2">
+                    <div className="text-sm font-semibold text-muted-foreground mb-3">Thresholds</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <div className="text-xs text-muted-foreground mb-1">P95 Latency (ms)</div>
+                        <Input
+                          type="number"
+                          value={draftConfig.p95Ms}
+                          min={1}
+                          onChange={(e) => setDraftConfig({ ...draftConfig, p95Ms: Number(e.target.value) })}
+                        />
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground mb-1">P99 Latency (ms)</div>
+                        <Input
+                          type="number"
+                          value={draftConfig.p99Ms}
+                          min={1}
+                          onChange={(e) => setDraftConfig({ ...draftConfig, p99Ms: Number(e.target.value) })}
+                        />
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground mb-1">Error Rate (%)</div>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={draftConfig.errorRatePct}
+                          min={0}
+                          onChange={(e) => setDraftConfig({ ...draftConfig, errorRatePct: Number(e.target.value) })}
+                        />
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground mb-1">Success Rate (%)</div>
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={draftConfig.successRatePct}
+                          min={0}
+                          max={100}
+                          onChange={(e) => setDraftConfig({ ...draftConfig, successRatePct: Number(e.target.value) })}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="px-4 pb-4">
+                    <div className="text-sm font-semibold text-muted-foreground mb-3">Load Settings</div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <div className="text-xs text-muted-foreground mb-1">Virtual Users</div>
+                        <Input
+                          type="number"
+                          value={draftConfig.vus}
+                          min={1}
+                          onChange={(e) => setDraftConfig({ ...draftConfig, vus: Number(e.target.value) })}
+                        />
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground mb-1">Ramp-up (min)</div>
+                        <Input
+                          type="number"
+                          step="1"
+                          value={draftConfig.rampUpMin}
+                          min={1}
+                          onChange={(e) => setDraftConfig({ ...draftConfig, rampUpMin: Number(e.target.value) })}
+                        />
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground mb-1">Duration (min)</div>
+                        <Input
+                          type="number"
+                          step="1"
+                          value={draftConfig.durationMin}
+                          min={1}
+                          onChange={(e) => setDraftConfig({ ...draftConfig, durationMin: Number(e.target.value) })}
+                        />
+                      </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground mb-1">Ramp-down (min)</div>
+                        <Input
+                          type="number"
+                          step="1"
+                          value={draftConfig.rampDownMin}
+                          min={1}
+                          onChange={(e) => setDraftConfig({ ...draftConfig, rampDownMin: Number(e.target.value) })}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <DrawerFooter>
+                    <DrawerClose asChild>
+                      <Button variant="outline" className="border-white/10 bg-white/5 text-foreground hover:bg-white/10">
+                        Cancel
+                      </Button>
+                    </DrawerClose>
+                    <Button
+                      className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-foreground"
+                      onClick={() => {
+                        setConfig(draftConfig)
+                        setDrawerOpen(false)
+                      }}
+                    >
+                      Save Changes
+                    </Button>
+                  </DrawerFooter>
+                </DrawerContent>
+              </Drawer>
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="p-6 rounded-xl bg-gray-800/50 border border-white/5">
                 <div className="text-sm text-muted-foreground mb-2">Virtual Users</div>
-                <div className="text-3xl font-bold text-foreground">1</div>
+                <div className="text-3xl font-bold text-foreground">{config.vus}</div>
                 <div className="text-sm text-muted-foreground/70 mt-1">Concurrent users per API</div>
               </div>
 
               <div className="p-6 rounded-xl bg-gray-800/50 border border-white/5">
                 <div className="text-sm text-muted-foreground mb-2">Duration</div>
-                <div className="text-3xl font-bold text-foreground">1 min</div>
-                <div className="text-sm text-muted-foreground/70 mt-1">Test execution time</div>
+                <div className="text-3xl font-bold text-foreground">{config.durationMin} min</div>
+                <div className="text-sm text-muted-foreground/70 mt-1">Steady execution time</div>
               </div>
 
               <div className="p-6 rounded-xl bg-gray-800/50 border border-white/5">
                 <div className="text-sm text-muted-foreground mb-2">Ramp-up Time</div>
-                <div className="text-3xl font-bold text-foreground">10s</div>
+                <div className="text-3xl font-bold text-foreground">{config.rampUpMin} min</div>
                 <div className="text-sm text-muted-foreground/70 mt-1">Time to reach target load</div>
               </div>
 
               <div className="p-6 rounded-xl bg-gray-800/50 border border-white/5">
-                <div className="text-sm text-muted-foreground mb-2">Success Threshold</div>
-                <div className="text-3xl font-bold text-foreground">100%</div>
-                <div className="text-sm text-muted-foreground/70 mt-1">Required success rate</div>
+                <div className="text-sm text-muted-foreground mb-2">Ramp-down Time</div>
+                <div className="text-3xl font-bold text-foreground">{config.rampDownMin} min</div>
+                <div className="text-sm text-muted-foreground/70 mt-1">Cooldown to zero users</div>
               </div>
             </div>
 
@@ -230,7 +394,7 @@ export function TestConfig() {
             </div>
             <div>
               <div className="text-sm text-muted-foreground mb-2">Estimated Time</div>
-              <div className="text-3xl font-bold text-foreground">~3 min</div>
+              <div className="text-3xl font-bold text-foreground">~{totalMinutes} min</div>
             </div>
             <div>
               <div className="text-sm text-muted-foreground mb-2">Total Requests</div>

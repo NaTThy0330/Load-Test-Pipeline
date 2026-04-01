@@ -129,7 +129,7 @@ export function Upload() {
                 <p className="text-muted-foreground">Upload your API documentation in PDF format</p>
               </div>
               <div className="px-3 py-1 rounded-lg bg-blue-500/20 border border-blue-500/30 text-blue-400 text-sm font-semibold">
-                Optional
+                Support GET Req only 
               </div>
             </div>
 
@@ -271,7 +271,7 @@ export function Upload() {
                 <p className="text-muted-foreground">Upload custom styles for your test configuration</p>
               </div>
               <div className="px-3 py-1 rounded-lg bg-blue-500/20 border border-blue-500/30 text-blue-400 text-sm font-semibold">
-                Optional
+                Support GET Req Only
               </div>
             </div>
 
