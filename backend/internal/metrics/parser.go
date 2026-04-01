@@ -28,7 +28,7 @@ type Parsed struct {
 	Note    string
 }
 
-func ParseSummary(path string, apis []models.API, sloP95Ms float64, jsonPath string) (Parsed, error) {
+func ParseSummary(path string, apis []models.API, sloP95Ms, sloP99Ms, sloErrorRatePct, sloSuccessRatePct float64, jsonPath string) (Parsed, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return Parsed{}, err
@@ -55,6 +55,9 @@ func ParseSummary(path string, apis []models.API, sloP95Ms float64, jsonPath str
 		if v, ok := metricValue(m, "p(95)"); ok {
 			job.OverallP95Ms = v
 		}
+		if v, ok := metricValue(m, "p(99)"); ok {
+			job.OverallP99Ms = v
+		}
 	}
 	if m, ok := summary.Metrics["http_req_failed"]; ok {
 		if v, ok := metricValue(m, "rate"); ok {
@@ -67,7 +70,7 @@ func ParseSummary(path string, apis []models.API, sloP95Ms float64, jsonPath str
 		}
 	}
 
-	job.SLOPass = job.OverallP95Ms > 0 && job.OverallP95Ms <= sloP95Ms
+	job.SLOPass = passesSLO(job.OverallP95Ms, job.OverallP99Ms, job.ErrorRatePct, sloP95Ms, sloP99Ms, sloErrorRatePct, sloSuccessRatePct)
 
 	results := make([]models.Result, 0, len(apis))
 	missingSubmetrics := 0
@@ -109,12 +112,12 @@ func ParseSummary(path string, apis []models.API, sloP95Ms float64, jsonPath str
 				res.ErrorRatePct = v * 100
 			}
 		}
-		if m := findSubmetric(summary.Metrics, "data_received", api.Name); m != nil {
+		if m := findSubmetric(summary.Metrics, "bytes_received", api.Name); m != nil {
 			if v, ok := metricValue(m, "rate"); ok {
 				res.ThroughputBps = v
 			}
 		}
-		res.SLOPass = res.P95Ms > 0 && res.P95Ms <= sloP95Ms
+		res.SLOPass = passesSLO(res.P95Ms, res.P99Ms, res.ErrorRatePct, sloP95Ms, sloP99Ms, sloErrorRatePct, sloSuccessRatePct)
 
 		results = append(results, res)
 	}
@@ -123,7 +126,8 @@ func ParseSummary(path string, apis []models.API, sloP95Ms float64, jsonPath str
 	if len(apis) == 1 && jsonPath != "" {
 		aggResults, durationSec, err := parseK6JSON(jsonPath)
 		if err == nil {
-			results = buildResultsFromAgg(apis, aggResults, durationSec, sloP95Ms)
+			results = buildResultsFromAgg(apis, aggResults, durationSec, sloP95Ms, sloP99Ms, sloErrorRatePct, sloSuccessRatePct)
+			applyOverallFromAgg(&job, aggResults, durationSec)
 			if job.DurationSec == 0 && durationSec > 0 {
 				job.DurationSec = int(durationSec)
 			}
@@ -142,7 +146,8 @@ func ParseSummary(path string, apis []models.API, sloP95Ms float64, jsonPath str
 	if missingSubmetrics == len(apis) && len(apis) > 1 && jsonPath != "" {
 		aggResults, durationSec, err := parseK6JSON(jsonPath)
 		if err == nil {
-			results = buildResultsFromAgg(apis, aggResults, durationSec, sloP95Ms)
+			results = buildResultsFromAgg(apis, aggResults, durationSec, sloP95Ms, sloP99Ms, sloErrorRatePct, sloSuccessRatePct)
+			applyOverallFromAgg(&job, aggResults, durationSec)
 			if job.DurationSec == 0 && durationSec > 0 {
 				job.DurationSec = int(durationSec)
 			}
@@ -158,7 +163,45 @@ func ParseSummary(path string, apis []models.API, sloP95Ms float64, jsonPath str
 		}
 	}
 
+	job.SLOPass = passesSLO(job.OverallP95Ms, job.OverallP99Ms, job.ErrorRatePct, sloP95Ms, sloP99Ms, sloErrorRatePct, sloSuccessRatePct)
 	return Parsed{Overall: job, Results: results, Note: note}, nil
+}
+
+func passesSLO(p95, p99, errorRatePct, maxP95, maxP99, maxErrorRatePct, minSuccessRatePct float64) bool {
+	if p95 <= 0 || p99 <= 0 {
+		return false
+	}
+	if p95 > maxP95 || p99 > maxP99 {
+		return false
+	}
+	if errorRatePct > maxErrorRatePct {
+		return false
+	}
+	successRate := 100 - errorRatePct
+	return successRate >= minSuccessRatePct
+}
+
+func applyOverallFromAgg(job *models.Job, aggs map[string]*agg, durationSec float64) {
+	var totalReq int
+	var failed int
+	var checksPass int
+	var checksTotal int
+	for _, a := range aggs {
+		totalReq += a.count
+		failed += a.failedCount
+		checksPass += a.checksPass
+		checksTotal += a.checksTotal
+	}
+	if totalReq > 0 {
+		job.TotalRequests = totalReq
+		job.ErrorRatePct = float64(failed) / float64(totalReq) * 100
+	}
+	if durationSec > 0 && totalReq > 0 {
+		job.OverallRPS = float64(totalReq) / durationSec
+	}
+	if checksTotal > 0 {
+		job.ChecksPassPct = float64(checksPass) / float64(checksTotal) * 100
+	}
 }
 
 func findSubmetric(metrics map[string]map[string]any, metricName, api string) map[string]any {
@@ -259,6 +302,8 @@ type agg struct {
 	values      []float64
 	failedCount int
 	bytesRecv   float64
+	checksPass  int
+	checksTotal int
 }
 
 type k6Point struct {
@@ -326,12 +371,14 @@ func parseK6JSON(path string) (map[string]*agg, float64, error) {
 				a.max = val
 			}
 			a.values = append(a.values, val)
-		case "http_req_failed":
-			if val > 0 {
-				a.failedCount++
-			}
-		case "data_received":
+		case "failed_requests":
+			a.failedCount += int(val)
+		case "bytes_received":
 			a.bytesRecv += val
+		case "checks_passed":
+			a.checksPass += int(val)
+		case "checks_total":
+			a.checksTotal += int(val)
 		}
 	}
 	if err := scanner.Err(); err != nil {
@@ -348,7 +395,7 @@ func parseK6JSON(path string) (map[string]*agg, float64, error) {
 	return aggs, durationSec, nil
 }
 
-func buildResultsFromAgg(apis []models.API, aggs map[string]*agg, durationSec float64, sloP95Ms float64) []models.Result {
+func buildResultsFromAgg(apis []models.API, aggs map[string]*agg, durationSec float64, sloP95Ms, sloP99Ms, sloErrorRatePct, sloSuccessRatePct float64) []models.Result {
 	results := make([]models.Result, 0, len(apis))
 	for _, api := range apis {
 		a := aggs[api.Name]
@@ -370,7 +417,7 @@ func buildResultsFromAgg(apis []models.API, aggs map[string]*agg, durationSec fl
 		res.P95Ms = percentile(a.values, 0.95)
 		res.P99Ms = percentile(a.values, 0.99)
 		res.ErrorRatePct = float64(a.failedCount) / float64(a.count) * 100
-		res.SLOPass = res.P95Ms > 0 && res.P95Ms <= sloP95Ms
+		res.SLOPass = passesSLO(res.P95Ms, res.P99Ms, res.ErrorRatePct, sloP95Ms, sloP99Ms, sloErrorRatePct, sloSuccessRatePct)
 		results = append(results, res)
 	}
 	return results
