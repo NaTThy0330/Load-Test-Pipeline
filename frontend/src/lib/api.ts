@@ -17,6 +17,8 @@ export type Job = {
   created_at?: string
   started_at?: string
   finished_at?: string
+  stage?: string
+  stage_message?: string
   test_type?: string
   duration_sec?: number
   total_requests?: number
@@ -69,6 +71,78 @@ export type ResultRow = {
   error_rate_pct?: number
   throughput_bps?: number
   slo_pass?: boolean
+}
+
+export type ApiSeriesPoint = {
+  t: string
+  v: number
+}
+
+export type ApiSeries = {
+  http_req_duration_p95: ApiSeriesPoint[]
+  http_reqs: ApiSeriesPoint[]
+  http_req_failed: ApiSeriesPoint[]
+  vus: ApiSeriesPoint[]
+  duration_sec?: number
+}
+
+export type ApiSummary = {
+  duration_sec: number
+  total_requests: number
+  checks_pass_pct: number
+  slo_pass: boolean
+  p95_ms: number
+  p99_ms: number
+  error_rate_pct: number
+  avg_ms: number
+  med_ms: number
+  min_ms: number
+  max_ms: number
+  rps: number
+  throughput_bps: number
+}
+
+export type SummaryTrendRow = {
+  metric: string
+  avg?: number
+  max?: number
+  med?: number
+  min?: number
+  p90?: number
+  p95?: number
+  p99?: number
+}
+
+export type SummaryCounterRow = {
+  metric: string
+  count: number
+  rate: number
+}
+
+export type SummaryRateRow = {
+  metric: string
+  rate: number
+}
+
+export type SummaryGaugeRow = {
+  metric: string
+  value: number
+}
+
+export type SummaryTables = {
+  trends: SummaryTrendRow[]
+  counters: SummaryCounterRow[]
+  rates: SummaryRateRow[]
+  gauges: SummaryGaugeRow[]
+}
+
+export type ApiDetailPayload = {
+  job: Job
+  api: ApiItem
+  result: ResultRow
+  summary: ApiSummary
+  series: ApiSeries
+  summary_tables: SummaryTables
 }
 
 export type ResultsPayload = {
@@ -127,4 +201,18 @@ export async function getJobResults(jobId: string) {
   const data = await res.json()
   if (!res.ok) throw new Error(data.error || 'Results failed')
   return data as ResultsPayload
+}
+
+export async function getApiDetails(jobId: string, apiId: string) {
+  const res = await fetch(`${API_BASE}/api/jobs/${jobId}/apis/${apiId}`)
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Details failed')
+  return data as ApiDetailPayload
+}
+
+export async function getJobLogs(jobId: string) {
+  const res = await fetch(`${API_BASE}/api/jobs/${jobId}/logs`)
+  const data = await res.json()
+  if (!res.ok) throw new Error(data.error || 'Logs failed')
+  return data as { stdout: string; stderr: string }
 }

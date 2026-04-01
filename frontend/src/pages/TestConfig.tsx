@@ -65,9 +65,66 @@ export function TestConfig() {
   const [draftConfig, setDraftConfig] = useState(DEFAULT_CONFIG)
   const totalMinutes = config.rampUpMin + config.durationMin + config.rampDownMin
 
+  const isValidJson = (value?: string) => {
+    if (!value || !value.trim()) return true
+    try {
+      JSON.parse(value)
+      return true
+    } catch {
+      return false
+    }
+  }
+
+  const validateConfig = () => {
+    const errors: string[] = []
+    if (config.vus <= 0) errors.push('Virtual Users must be greater than 0')
+    if (config.rampUpMin <= 0) errors.push('Ramp-up must be greater than 0 minutes')
+    if (config.durationMin <= 0) errors.push('Duration must be greater than 0 minutes')
+    if (config.rampDownMin < 0) errors.push('Ramp-down must be 0 or greater')
+    if (config.p95Ms <= 0) errors.push('P95 latency must be greater than 0')
+    if (config.p99Ms <= 0) errors.push('P99 latency must be greater than 0')
+    if (config.p99Ms < config.p95Ms) errors.push('P99 latency must be greater than or equal to P95')
+    if (config.errorRatePct < 0 || config.errorRatePct > 100) errors.push('Error rate must be between 0 and 100')
+    if (config.successRatePct <= 0 || config.successRatePct > 100) errors.push('Success rate must be between 0 and 100')
+    return errors
+  }
+
+  const validateApis = () => {
+    const errors: string[] = []
+    apis.forEach((api, index) => {
+      const label = api.name ? `${api.name}` : `API #${index + 1}`
+      const method = (api.method || 'GET').toUpperCase().trim()
+      if (method !== 'GET' && method !== 'POST') {
+        errors.push(`${label}: method must be GET or POST`)
+      }
+      if (api.headers && !isValidJson(api.headers)) {
+        errors.push(`${label}: headers must be valid JSON`)
+      }
+      if (api.query_params && !isValidJson(api.query_params)) {
+        errors.push(`${label}: query must be valid JSON`)
+      }
+      if (api.body && !isValidJson(api.body)) {
+        errors.push(`${label}: body must be valid JSON`)
+      }
+      if (method === 'POST' && (!api.body || !api.body.trim())) {
+        errors.push(`${label}: body required for POST`)
+      }
+    })
+    return errors
+  }
+
   const handleStartTest = async () => {
     if (!apis.length) {
       navigate('/upload')
+      return
+    }
+    const configErrors = validateConfig()
+    const apiErrors = validateApis()
+    if (configErrors.length || apiErrors.length) {
+      const allErrors = [...configErrors, ...apiErrors]
+      const limited = allErrors.slice(0, 10)
+      const more = allErrors.length > limited.length ? `\n- ${allErrors.length - limited.length} more...` : ''
+      setError(`Please fix the following issues:\n- ${limited.join('\n- ')}${more}`)
       return
     }
     try {
@@ -138,7 +195,7 @@ export function TestConfig() {
         </div>
 
         {error && (
-          <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
+          <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300 whitespace-pre-wrap">
             {error}
           </div>
         )}

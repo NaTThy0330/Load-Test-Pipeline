@@ -224,7 +224,11 @@ export function Dashboard() {
                 </tr>
               ) : (
                 rows.map((row) => (
-                  <tr key={row.id} className="border-t border-white/5">
+                  <tr
+                    key={row.id}
+                    className="border-t border-white/5 cursor-pointer hover:bg-white/5"
+                    onClick={() => job?.id && navigate(`/jobs/${job.id}/apis/${row.api_id}`)}
+                  >
                     {(() => {
                       const fullName = apiIndex[row.api_id] || row.api_id
                       const shortName = formatApiShortName(fullName)
@@ -260,9 +264,9 @@ export function Dashboard() {
         </div>
       </div>
 
-      <Link to="/upload" className="fixed bottom-6 left-6 z-50 print-hidden">
+      <Link to="/test-config" className="fixed bottom-6 left-6 z-50 print-hidden">
         <Button variant="outline" className="border-white/10 bg-white/5 text-foreground hover:bg-white/10">
-          Back to Upload
+          Back to Test Config
         </Button>
       </Link>
     </div>

@@ -152,6 +152,7 @@ func extractAPIsFromCSV(path string) ([]models.API, error) {
 	}
 
 	var apis []models.API
+	var errors []string
 	line := 1
 	for {
 		record, err := reader.Read()
@@ -164,7 +165,16 @@ func extractAPIsFromCSV(path string) ([]models.API, error) {
 		}
 
 		pathVal := getValue(record, idxPath)
-		if strings.TrimSpace(pathVal) == "" {
+		trimmedPath := strings.TrimSpace(pathVal)
+		hasOtherValues := strings.TrimSpace(getValue(record, idxMethod)) != "" ||
+			strings.TrimSpace(getValue(record, idxHeaders)) != "" ||
+			strings.TrimSpace(getValue(record, idxQuery)) != "" ||
+			strings.TrimSpace(getValue(record, idxAuth)) != "" ||
+			strings.TrimSpace(getValue(record, idxBody)) != ""
+		if trimmedPath == "" {
+			if hasOtherValues {
+				errors = append(errors, fmt.Sprintf("line %d: api_path is required", line))
+			}
 			continue
 		}
 
@@ -172,30 +182,35 @@ func extractAPIsFromCSV(path string) ([]models.API, error) {
 		if method == "" {
 			method = "GET"
 		}
-		if method != "GET" && method != "POST" {
-			return nil, fmt.Errorf("csv: invalid http method on line %d", line)
-		}
 
 		headers := strings.TrimSpace(getValue(record, idxHeaders))
 		query := strings.TrimSpace(getValue(record, idxQuery))
 		auth := strings.TrimSpace(getValue(record, idxAuth))
 		body := strings.TrimSpace(getValue(record, idxBody))
 
-		if headers != "" && !isValidJSON(headers) {
-			return nil, fmt.Errorf("csv: invalid headers json on line %d", line)
+		var lineErrors []string
+		if method != "GET" && method != "POST" {
+			lineErrors = append(lineErrors, "invalid http method (use GET or POST)")
 		}
-		if query != "" && !isValidJSON(query) {
-			return nil, fmt.Errorf("csv: invalid query json on line %d", line)
+		if headers != "" && !IsValidJSON(headers) {
+			lineErrors = append(lineErrors, "invalid headers json")
 		}
-		if body != "" && !isValidJSON(body) {
-			return nil, fmt.Errorf("csv: invalid body json on line %d", line)
+		if query != "" && !IsValidJSON(query) {
+			lineErrors = append(lineErrors, "invalid query json")
+		}
+		if body != "" && !IsValidJSON(body) {
+			lineErrors = append(lineErrors, "invalid body json")
 		}
 		if method == "POST" && body == "" {
-			return nil, fmt.Errorf("csv: body required for POST on line %d", line)
+			lineErrors = append(lineErrors, "body required for POST")
+		}
+		if len(lineErrors) > 0 {
+			errors = append(errors, fmt.Sprintf("line %d: %s", line, strings.Join(lineErrors, "; ")))
+			continue
 		}
 
 		apis = append(apis, models.API{
-			Name:          strings.TrimSpace(pathVal),
+			Name:          trimmedPath,
 			Method:        method,
 			Description:   "",
 			Headers:       headers,
@@ -205,6 +220,9 @@ func extractAPIsFromCSV(path string) ([]models.API, error) {
 		})
 	}
 
+	if len(errors) > 0 {
+		return nil, fmt.Errorf("csv validation errors:\n- %s", strings.Join(errors, "\n- "))
+	}
 	return apis, nil
 }
 
@@ -223,7 +241,7 @@ func getValue(record []string, idx int) string {
 	return record[idx]
 }
 
-func isValidJSON(value string) bool {
+func IsValidJSON(value string) bool {
 	var v any
 	return json.Unmarshal([]byte(value), &v) == nil
 }

@@ -1,4 +1,4 @@
-CSV Template (Sprint 1)
+ CSV Template (Sprint 1)
 
 Columns
 - `api_path` Required. Full URL of API.

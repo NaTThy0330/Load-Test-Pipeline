@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Activity, Zap, Loader2, CheckCircle2, TrendingUp } from 'lucide-react'
+import { Activity, Zap, Loader2, CheckCircle2, TrendingUp, AlertTriangle } from 'lucide-react'
 import { Progress } from '../component/progress'
-import { getJobResults, getJobStatus } from '../lib/api'
+import { getJobLogs, getJobResults, getJobStatus } from '../lib/api'
 import { useTestContext } from '../context/TestContext'
 
 const testPhases = [
@@ -21,6 +21,11 @@ export function Loading() {
   const [eta, setEta] = useState(0)
   const [status, setStatus] = useState('running')
   const [currentPhase, setCurrentPhase] = useState(0)
+  const [failureMessage, setFailureMessage] = useState('')
+  const [failureStage, setFailureStage] = useState('')
+  const [logs, setLogs] = useState<{ stdout: string; stderr: string } | null>(null)
+  const [logsLoading, setLogsLoading] = useState(false)
+  const [logsError, setLogsError] = useState('')
 
   useEffect(() => {
     if (!job?.id) {
@@ -45,6 +50,8 @@ export function Loading() {
           navigate('/dashboard')
         }
         if (data.job.status === 'failed') {
+          setFailureMessage(data.job.stage_message || 'Test failed')
+          setFailureStage(data.job.stage || '')
           clearInterval(interval)
         }
       } catch {
@@ -65,6 +72,20 @@ export function Loading() {
     : 0
   const rpsEstimate = Math.min(parseFloat(((progress / 100) * 10).toFixed(2)), 10)
 
+  const handleLoadLogs = async () => {
+    if (!job?.id) return
+    try {
+      setLogsLoading(true)
+      setLogsError('')
+      const data = await getJobLogs(job.id)
+      setLogs(data)
+    } catch (err: any) {
+      setLogsError(err.message || 'Failed to load logs')
+    } finally {
+      setLogsLoading(false)
+    }
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center">
       <div className="w-full max-w-4xl px-6">
@@ -76,6 +97,51 @@ export function Loading() {
           <h1 className="text-4xl font-bold text-foreground mb-3">Running Load Test</h1>
           <p className="text-xl text-muted-foreground">Testing your APIs with k6...</p>
         </div>
+
+        {status === 'failed' && (
+          <div className="mb-8 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-red-400 mt-0.5" />
+              <div className="flex-1">
+                <div className="text-sm font-semibold text-red-300 mb-1">Test failed</div>
+                <div className="text-sm text-red-200 whitespace-pre-wrap">
+                  {failureStage ? `[${failureStage}] ` : ''}
+                  {failureMessage}
+                </div>
+                <div className="mt-3 flex items-center gap-3">
+                  <button
+                    onClick={handleLoadLogs}
+                    className="inline-flex items-center gap-2 rounded-md border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs text-red-200 hover:bg-red-500/20"
+                    disabled={logsLoading}
+                  >
+                    {logsLoading ? 'Loading logs...' : logs ? 'Reload logs' : 'View logs'}
+                  </button>
+                  {logsError && <span className="text-xs text-red-200">{logsError}</span>}
+                </div>
+              </div>
+            </div>
+            {logs && (logs.stdout || logs.stderr) && (
+              <div className="mt-4 space-y-3">
+                {logs.stderr && (
+                  <div>
+                    <div className="text-xs font-semibold text-red-200 mb-1">stderr</div>
+                    <pre className="max-h-60 overflow-auto rounded-lg border border-red-500/20 bg-black/40 p-3 text-xs text-red-100 whitespace-pre-wrap">
+                      {logs.stderr}
+                    </pre>
+                  </div>
+                )}
+                {logs.stdout && (
+                  <div>
+                    <div className="text-xs font-semibold text-red-200 mb-1">stdout</div>
+                    <pre className="max-h-60 overflow-auto rounded-lg border border-red-500/20 bg-black/40 p-3 text-xs text-red-100 whitespace-pre-wrap">
+                      {logs.stdout}
+                    </pre>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="mb-8">
           <div className="flex items-center justify-between mb-3">

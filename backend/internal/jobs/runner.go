@@ -1,9 +1,11 @@
 package jobs
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/google/uuid"
@@ -54,6 +56,7 @@ func Run(db *storage.DB, jobID string) error {
 		result models.Result
 		job    models.Job
 		err    error
+		warn   string
 	}
 
 	resultsCh := make(chan runResult, len(apis))
@@ -75,16 +78,20 @@ func Run(db *storage.DB, jobID string) error {
 			}
 
 			result, err := k6.Run(scriptPath)
-			if err != nil {
-				note := fmt.Sprintf("k6 error: %v", err)
-				if result.Stderr != "" {
-					note = note + "\n" + result.Stderr
-				}
-				_ = writeRunLogs(outDir, result.Stdout, result.Stderr)
-				resultsCh <- runResult{err: fmt.Errorf("%s", note)}
-				return
-			}
 			_ = writeRunLogs(outDir, result.Stdout, result.Stderr)
+			var warn string
+			if err != nil {
+				if errors.Is(err, k6.ErrThresholdsExceeded) {
+					warn = api.Name
+				} else {
+					note := fmt.Sprintf("k6 error: %v", err)
+					if result.Stderr != "" {
+						note = note + "\n" + result.Stderr
+					}
+					resultsCh <- runResult{err: fmt.Errorf("%s", note)}
+					return
+				}
+			}
 
 			parsed, err := metrics.ParseSummary(result.SummaryPath, []models.API{api}, cfg.ThresholdP95Ms, cfg.ThresholdP99Ms, cfg.ThresholdErrorRatePct, cfg.ThresholdSuccessRatePct, result.JSONPath)
 			if err != nil {
@@ -98,7 +105,7 @@ func Run(db *storage.DB, jobID string) error {
 
 			res := parsed.Results[0]
 			res.ID = uuid.NewString()
-			resultsCh <- runResult{result: res, job: parsed.Overall}
+			resultsCh <- runResult{result: res, job: parsed.Overall, warn: warn}
 		}(idx, api)
 	}
 
@@ -116,11 +123,15 @@ func Run(db *storage.DB, jobID string) error {
 	var checksSum float64
 	var durationSec int
 	var anyErr error
+	var warnings []string
 
 	for r := range resultsCh {
 		if r.err != nil {
 			anyErr = r.err
 			continue
+		}
+		if r.warn != "" {
+			warnings = append(warnings, r.warn)
 		}
 		results = append(results, r.result)
 		if r.job.TotalRequests > 0 {
@@ -167,16 +178,31 @@ func Run(db *storage.DB, jobID string) error {
 		Stage:         "done",
 		StageMessage:  "Completed",
 	}
+	if len(warnings) > 0 {
+		job.StageMessage = "Completed with threshold warnings"
+	}
 
 	if err := db.UpdateJobMetrics(job); err != nil {
 		return err
 	}
 
+	notes := "Per-API k6 runs completed."
+	if len(warnings) > 0 {
+		maxList := 5
+		list := warnings
+		if len(warnings) > maxList {
+			list = warnings[:maxList]
+		}
+		notes = fmt.Sprintf("Thresholds exceeded for %d API(s): %s", len(warnings), strings.Join(list, ", "))
+		if len(warnings) > maxList {
+			notes = notes + ", ..."
+		}
+	}
 	summary := models.Summary{
 		ID:        jobID + "-summary",
 		JobID:     jobID,
 		TotalAPIs: len(apis),
-		Notes:     "Per-API k6 runs completed.",
+		Notes:     notes,
 	}
 	_ = db.CreateSummary(summary)
 
