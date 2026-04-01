@@ -59,14 +59,14 @@ func (db *DB) CreateAPIs(apis []models.API) error {
 			_ = tx.Rollback()
 		}
 	}()
-	stmt, err := tx.Prepare(`INSERT INTO apis (id, job_id, name, method, description) VALUES (?, ?, ?, ?, ?)`)
+	stmt, err := tx.Prepare(`INSERT INTO apis (id, job_id, name, method, description, headers, query_params, authorization, body) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
 	if err != nil {
 		return err
 	}
 	defer stmt.Close()
 
 	for _, api := range apis {
-		if _, err = stmt.Exec(api.ID, api.JobID, api.Name, api.Method, api.Description); err != nil {
+		if _, err = stmt.Exec(api.ID, api.JobID, api.Name, api.Method, api.Description, api.Headers, api.QueryParams, api.Authorization, api.Body); err != nil {
 			return err
 		}
 	}
@@ -120,7 +120,7 @@ func (db *DB) GetJob(id string) (models.Job, error) {
 }
 
 func (db *DB) ListAPIsByJob(jobID string) ([]models.API, error) {
-	rows, err := db.Query(`SELECT id, job_id, name, method, description FROM apis WHERE job_id = ?`, jobID)
+	rows, err := db.Query(`SELECT id, job_id, name, method, description, headers, query_params, authorization, body FROM apis WHERE job_id = ?`, jobID)
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +129,7 @@ func (db *DB) ListAPIsByJob(jobID string) ([]models.API, error) {
 	var apis []models.API
 	for rows.Next() {
 		var api models.API
-		if err := rows.Scan(&api.ID, &api.JobID, &api.Name, &api.Method, &api.Description); err != nil {
+		if err := rows.Scan(&api.ID, &api.JobID, &api.Name, &api.Method, &api.Description, &api.Headers, &api.QueryParams, &api.Authorization, &api.Body); err != nil {
 			return nil, err
 		}
 		apis = append(apis, api)

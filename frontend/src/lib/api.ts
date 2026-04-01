@@ -5,6 +5,10 @@ export type ApiItem = {
   name: string
   method: string
   description?: string
+  headers?: string
+  query_params?: string
+  authorization?: string
+  body?: string
 }
 
 export type Job = {
@@ -54,10 +58,15 @@ export type ResultsPayload = {
   results: ResultRow[]
 }
 
-export async function uploadFiles(pdfFile?: File | null, cssFile?: File | null) {
+export async function uploadFiles(
+  pdfFile?: File | null,
+  cssFile?: File | null,
+  csvFile?: File | null
+) {
   const form = new FormData()
   if (pdfFile) form.append('file', pdfFile)
   if (cssFile) form.append('file', cssFile)
+  if (csvFile) form.append('file', csvFile)
 
   const res = await fetch(`${API_BASE}/api/upload`, {
     method: 'POST',

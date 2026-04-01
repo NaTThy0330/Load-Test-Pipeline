@@ -140,7 +140,8 @@ func (s *Server) handleCreateJob(w http.ResponseWriter, r *http.Request) {
 	for _, api := range req.APIs {
 		api.ID = uuid.NewString()
 		api.JobID = jobID
-		if strings.TrimSpace(api.Method) == "" {
+		api.Method = strings.ToUpper(strings.TrimSpace(api.Method))
+		if api.Method == "" {
 			api.Method = "GET"
 		}
 		apis = append(apis, api)

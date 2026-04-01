@@ -1,0 +1,5 @@
+api_path,http_method,headers,query,authorization,body
+https://api.example.com/users,GET,"{""Accept"":""application/json""}","{""page"":1,""limit"":10}","Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",""
+https://api.example.com/profile,GET,"{""Accept"":""application/json""}","{""page"":1,""limit"":10}","Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",""
+https://api.example.com/login,POST,"{""Content-Type"":""application/json""}","","","{""username"":""test"",""password"":""1234""}"
+https://api.example.com/orders,POST,"{""Content-Type"":""application/json""}","","Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9","{""productId"":1,""qty"":2}"

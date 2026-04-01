@@ -63,6 +63,10 @@ func migrate(db *sql.DB) error {
 			name TEXT NOT NULL,
 			method TEXT,
 			description TEXT,
+			headers TEXT,
+			query_params TEXT,
+			authorization TEXT,
+			body TEXT,
 			FOREIGN KEY(job_id) REFERENCES jobs(id)
 		);`,
 		`CREATE TABLE IF NOT EXISTS results (
@@ -107,6 +111,18 @@ func migrate(db *sql.DB) error {
 		return err
 	}
 	if err := ensureColumn(db, "jobs", "stage_message", "TEXT"); err != nil {
+		return err
+	}
+	if err := ensureColumn(db, "apis", "headers", "TEXT"); err != nil {
+		return err
+	}
+	if err := ensureColumn(db, "apis", "query_params", "TEXT"); err != nil {
+		return err
+	}
+	if err := ensureColumn(db, "apis", "authorization", "TEXT"); err != nil {
+		return err
+	}
+	if err := ensureColumn(db, "apis", "body", "TEXT"); err != nil {
 		return err
 	}
 	return nil

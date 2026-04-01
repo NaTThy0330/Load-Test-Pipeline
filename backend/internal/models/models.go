@@ -1,11 +1,15 @@
 package models
 
 type API struct {
-	ID          string `json:"id"`
-	JobID       string `json:"job_id"`
-	Name        string `json:"name"`
-	Method      string `json:"method"`
-	Description string `json:"description"`
+	ID            string `json:"id"`
+	JobID         string `json:"job_id"`
+	Name          string `json:"name"`
+	Method        string `json:"method"`
+	Description   string `json:"description"`
+	Headers       string `json:"headers"`
+	QueryParams   string `json:"query_params"`
+	Authorization string `json:"authorization"`
+	Body          string `json:"body"`
 }
 
 type Job struct {

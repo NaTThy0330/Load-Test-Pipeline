@@ -189,7 +189,15 @@ export function ApiList() {
                   <div className="mb-2">
                     <code className="text-sm text-foreground font-mono break-all">{api.name}</code>
                   </div>
-                  <p className="text-muted-foreground text-sm">{api.description || '—'}</p>
+                  <p className="text-muted-foreground text-sm">{api.description || '-'}</p>
+                  <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <DetailBlock label="Headers" value={formatJson(api.headers)} />
+                    <DetailBlock label="Query" value={formatJson(api.query_params)} />
+                    <DetailBlock label="Authorization" value={api.authorization || '-'} />
+                    {api.method === 'POST' && (
+                      <DetailBlock label="Body" value={formatJson(api.body)} />
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -214,4 +222,22 @@ export function ApiList() {
       </Link>
     </div>
   )
+}
+
+function DetailBlock({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-white/10 bg-white/5 p-3">
+      <div className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground mb-2">{label}</div>
+      <pre className="text-[11px] text-foreground whitespace-pre-wrap break-words">{value}</pre>
+    </div>
+  )
+}
+
+function formatJson(value?: string) {
+  if (!value) return '-'
+  try {
+    return JSON.stringify(JSON.parse(value), null, 2)
+  } catch {
+    return value
+  }
 }
